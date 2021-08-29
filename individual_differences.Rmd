@@ -26,10 +26,10 @@ klippy::klippy(tooltip_message = 'Click to Copy Code', tooltip_success = 'Done',
 
 # Introduction
 
-This supplement introduces readers to the calculations and modeling approaches reviewed by:\
+This supplement introduces readers to the calculations and modeling approaches, reviewed by:\
 Rose E. O'Dea, Daniel W.A. Noble and Shinichi Nakagawa 2021. Unifying individual differences in personality, predictability, and plasticity: a practical guide. *Methods in Ecology and Evolution*, using the `brms` R package (which interfaces with `stan`).
 
-We only fit an exemplar set of models from our worked example. More specifically, we focus on a subset of models using two traits (aggression and activity) to demonstrate how to fit single- and double- hierarchical generalized linear models (abbreviated as SHGLM and DHGLM, respectively). This includes uni-variate and bi-variate (two trait) models. For a selection of models we also show how to: 1) calculate repeatability and the coefficient of variation for the mean and dispersion models and 2) extract and manipulate individual BLUPs (best linear unbiased predictors) to estimate between-individual correlations outlined in our manuscript.
+We only fit an exemplar set of models from our worked example. More specifically, we focus on a subset of models using two traits (aggression and activity) to demonstrate how to fit single- and double- hierarchical generalized linear models (abbreviated as SHGLM and DHGLM, respectively). This includes uni-variate and bi-variate (two trait) models. For a selection of models we also show how to: 1) calculate repeatability and the coefficient of variation for the mean and dispersion models, and 2) extract and manipulate individual BLUPs (best linear unbiased predictors) to estimate between-individual correlations outlined in our manuscript.
 
 # R Packages, Data and Model Fits
 
@@ -560,7 +560,7 @@ flextable(pers_pred_results)
 
 ```
 
-## Bivariate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
+## Bi-variate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 
 ### Model {.tabset .tabset-fade .tabset-pills}
 
