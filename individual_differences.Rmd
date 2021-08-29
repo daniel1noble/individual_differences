@@ -1,0 +1,197 @@
+---
+title: "Unifying individual differences in personality, predictability, and plasticity: a practical guide - 'brms' model code"
+author: Rose E. O’Dea, Daniel W.A. Noble, Shinichi Nakagawa
+date: "`r Sys.Date()`"
+output: 
+  bookdown::html_document2:
+    code_folding: hide
+    number_sections: no
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, tidy = TRUE)
+options(digits=2)
+```
+
+```{r klippy, echo=FALSE, include=TRUE, message=FALSE, warning=FALSE}
+#install.packages("devtools")
+remotes::install_github("rlesur/klippy")
+klippy::klippy(tooltip_message = 'Click to Copy Code', tooltip_success = 'Done', position = 'right', color = "red")
+```
+
+# R Packages, Data and Model Fits
+
+Readers will  need to download the data and model fits (unless they want to rerun the models) from our [Open Science Framework (OSF) Project Site](http://doi.org/10.17605/OSF.IO/V3QAX). Once downloaded and placed in your working directory run the following code to load the datasets and R packages:
+
+```{r loadpackages, echo = TRUE, results = "hide", messages = FALSE, class.source='klippy'}
+# install.packages("pacman")
+# Load Libraries and relevant data
+		pacman::p_load(brms, tidyverse, coda, MCMCglmm, bayesplot, here, formatR, flextable)	
+
+		
+# Get the raw. We need this for back transformation from z-scale
+		# making sure fish_ID is coded as a factor (done automatically before R v4+)
+		# square-root transforming novel and predator response variables
+		# z-scaling all variables
+		
+	  dat <- read.csv("./Data/data_predictability_worked_example.csv")
+		
+	  dat <- dat %>% 
+	         dplyr::mutate(fish_ID = factor(fish_ID, levels = unique(fish_ID)),
+		                       age.Z = scale(age_days),
+		                    activity = scale(dist_m_Activity),
+		                  aggression = scale(stim.dist_0_5cm_dur_Aggression),
+		                       novel = scale(sqrt(stim.dist_0_10cm_dur_Novel)),     
+		                    predator = scale(sqrt(stim.dist_0_10cm_dur_Predator)), 
+		                      social = scale(stim.dist_0_5cm_dur_Social))	
+		
+```
+
+# Load Functions 
+
+Load in the functions that will be needed to process output from the models to derive the various estimates needed for calculating the necessary parameters:
+
+```{r funcs, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+
+  # Population-level intercept   
+		func_Bp <- function(B0, B1){
+		  Bp <- (2*B0 + B1)/2 # assumes 50/50 ratio for B1 (in our example = sex)
+		  return(Bp)
+		}
+
+   # Total variance, equation 40. Function for summing dataframe of variance components 
+		func_sum_var <- function(vars){
+		  sum_var <- sapply(1:nrow(vars), function(x) sum(vars[x,], na.rm = T))
+		  return(sum_var)
+		}
+
+
+		# Variance for fixed effects
+		func_var_fixed <- function(B1, B2, data){
+		  # model matrix for fixed effects
+		  X <- model.matrix(~ 1 + sex + age.Z, data = data) 
+    		  X1 <- X[,2]
+    		  X2 <- X[,3]
+		  var_fixed <- sapply(1:length(B1), function(x) var(X1*B1[x] + X2*B2[x]))
+		  return(var_fixed)
+		}		
+		
+```
+# Running *brms* SHGLM and DHLGM models {.tabset}
+## Personality (SHGLM) {.tabset .tabset-fade .tabset-pills} 
+### Model {.tabset .tabset-fade .tabset-pills} 
+Let's start by fitting a model to the aggression data to estimate "personality".
+
+```{r personality, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+########### Personality ##########
+# EXAMPLE 1: standata_personality_shglm_aggression; replicates the following model
+#  stan_personality_shglm_aggression <- stan(file = "./Code/stancode_personality_shglm.stan",
+#                                          data = standata_personality_shglm_aggression,
+#                                          pars = save_pars, 
+#                                          iter = 6000, warmup = 2000, chains = 3, cores = 3)
+##################################  
+
+	# Fit a model for aggression that includes fixed effects of sex and z-transformed age plus a random intercept for individual ID
+		rerun1 = FALSE
+		
+		if(rerun1) {
+		        model1 <- bf(aggression ~ sex + age.Z + (1 | id))
+			model1_fit <- brms::brm(model1, data = dat, 
+									iter = 6000, warmup = 2000, chains = 3, cores = 3, 
+									save_pars = save_pars())
+			saveRDS(model1_fit, "./models/model1_fit") 
+		} else {
+			model1_fit <- readRDS(here("models","model1_fit"))
+		}
+		
+		summary(model1_fit)
+```
+
+### Calculate CVm and Rpm {.tabset .tabset-fade .tabset-pills} 
+
+```{r pers_rpm_cv, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+
+# (Step 1):  Get the average intercept from fixed effects.
+Bpm <- func_Bp(    B0 = brms::posterior_samples(model1_fit, pars = "Intercept")[,1], 
+		               B1 = brms::posterior_samples(model1_fit, pars = "sex")[,1])
+
+# (Step 2): Extract random intercept for ID. Numerator for eqn 34. Note these are standard deviations for between-individual differences in the mean model
+		sigma_m0 <- brms::posterior_samples(model1_fit, pars = "sd_id__Intercept")[,1]
+		sigma_m2 <- NA # here we have no random slope, so sigma_m = sigma_m0
+
+# (Step 3): Extract residual standard deviation
+		 sigma_e <- brms::posterior_samples(model1_fit, pars = "sigma")[,1]
+		
+# (Step 4): Calculate fixed effect variance
+	var_fixed <- func_var_fixed(  B1 =  brms::posterior_samples(model1_fit, pars = "sex")[,1],
+		                            B2 =  brms::posterior_samples(model1_fit, pars = "age.Z")[,1],
+		                            data = dat) 
+
+# (Step 5): Calculate total phenotypic variance
+		total_var <- func_sum_var(vars = data.frame(sigma_m0^2, var_fixed, sigma_e^2))
+		
+# (Step 6): Convert back from z-scale 
+		
+		   mu_unscaled <- mean(dat$stim.dist_0_5cm_dur_Aggression)
+		sigma_unscaled <- sd(dat$stim.dist_0_5cm_dur_Aggression)
+		
+		            Mu <- Bpm*sigma_unscaled + mu_unscaled
+	         	 Sigma <- sqrt(total_var)*sigma_unscaled
+		
+    indiv_sd <- sqrt(sigma_m0^2)*sigma_unscaled
+
+# (Step 7): Calculate CVm 
+		CV_m <- indiv_sd/Mu
+
+# (Step 8): Calculate Rpm		
+		Rp_m <- sigma_m0^2/total_var
+
+# Results
+			personality_results <- data.frame( CVm = mean(CV_m),
+			                                   CVm.L = HPDinterval(mcmc(CV_m))[1],
+			                                   CVm.U = HPDinterval(mcmc(CV_m))[2],
+			                                   	Rpm =  mean(Rp_m),
+			                                   Rpm.L = 	HPDinterval(mcmc(Rp_m))[1],
+			                                   Rpm.U = 	HPDinterval(mcmc(Rp_m))[1])
+			flextable(personality_results)
+		
+		
+```
+
+## Personality / Predictability (DHGLM) {.tabset .tabset-fade .tabset-pills} 
+### Model {.tabset .tabset-fade .tabset-pills} 
+Let's start by fitting a model to the aggression data to estimate "personality".
+
+```{r personality_pred, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+######################################### Personality / Predictability #####################################
+# EXAMPLE 2: standata_personality_dhglm_aggression; replicates the following model
+# stan_personality_dhglm_aggression <- stan(file = "./Code/stancode_personality_dhglm.stan",
+#                                          data = standata_personality_dhglm_aggression,
+#                                          pars = save_pars, 
+#                                          iter = 6000, warmup = 2000, chains = 3, cores = 3)	
+##########################################################################################################    	
+
+	rerun2=FALSE
+	
+	if(rerun2){
+	    model2 <- bf(aggression ~ sex + age.Z + (1 | p | id),
+	    			            sigma ~ sex + age.Z + (1 | p | id))
+
+		model2_fit <- brm(model2, data = dat, 
+								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
+								save_pars = save_pars()) 
+		
+		saveRDS(model2_fit, "./models/model2_fit")
+	} else {
+		model2_fit <- readRDS("./models/model2_fit")
+	}
+
+	summary(model2_fit)
+```
+
+
+### Calculate CVm and Rpm {.tabset .tabset-fade .tabset-pills} 
