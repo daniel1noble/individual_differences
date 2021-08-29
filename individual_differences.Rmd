@@ -22,6 +22,12 @@ options(digits=2)
 remotes::install_github("rlesur/klippy")
 klippy::klippy(tooltip_message = 'Click to Copy Code', tooltip_success = 'Done', position = 'right', color = "red")
 ```
+# Introduction
+This supplement introduces readers to the `brms` coding syntax, calculations and approaches outlined in: 
+
+Rose E. O'Dea, Daniel W.A. Noble and Shinichi Nakagawa 2021. Unifying individual differences in personality, predictability, and plasticity: a practical guide. *Methods in Ecology and Evolution*.
+
+We do not run all the models from our worked example. Instead, we only focus on a subset of models using two traits (aggression and activity) to demonstrate how to fit the single- and double- hierachical generalised models (SHGLM and DHGLM, respectively) using the R package `brms` (which interfaces with `stan`). This includes univariate and bivariate (two trait) models. For a selection of models we also show how to: 1) Calculate repeatability and the coefficient of variation for the mean and dispersion models and 2) extract and manipulate individual BLUPs (best linear unbiased predcitors) to estimate between-individual correlations outlined in our manuscript. 
 
 # R Packages, Data and Model Fits
 
@@ -47,7 +53,8 @@ Readers will  need to download the data and model fits (unless they want to reru
 		                  aggression = scale(stim.dist_0_5cm_dur_Aggression),
 		                       novel = scale(sqrt(stim.dist_0_10cm_dur_Novel)),     
 		                    predator = scale(sqrt(stim.dist_0_10cm_dur_Predator)), 
-		                      social = scale(stim.dist_0_5cm_dur_Social))	
+		                      social = scale(stim.dist_0_5cm_dur_Social),
+		                      id = fish_ID)	
 		
 ```
 
@@ -207,7 +214,7 @@ Bpm <- func_Bp(    B0 = brms::posterior_samples(model1_fit, pars = "Intercept")[
 			                                   CVm.U = HPDinterval(mcmc(CV_m))[2],
 			                                   	Rpm =  mean(Rp_m),
 			                                   Rpm.L = 	HPDinterval(mcmc(Rp_m))[1],
-			                                   Rpm.U = 	HPDinterval(mcmc(Rp_m))[1])
+			                                   Rpm.U = 	HPDinterval(mcmc(Rp_m))[2])
 			flextable(personality_results)
 		
 		
@@ -395,4 +402,89 @@ Here, using the model we can calculate the personality-plasticity association (i
          mean(cors)
          HPDinterval(mcmc(cors))
             
+```
+## Personality / Predictability / Plasticity (DHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
+### Model {.tabset .tabset-fade .tabset-pills}
+```{r, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+######## Personality/Plasticity/Predictability ###################
+#stan_personality_plasticity_dhglm_aggression <- stan(file = "./Code/stancode_personality_plasticity_dhglm.stan",
+#                                                     data = standata_personality_plasticity_dhglm_aggression,
+#                                                     pars = save_pars, 
+#                                                     iter = 6000, warmup = 2000, chains = 3, cores = 3)
+##################################################################
+	
+	rerun4 = FALSE 
+
+	if(rerun4){
+	    	model4 <- bf(  aggression ~ sex + age.Z + (1 + age.Z | q | id) ,
+	    			               sigma ~ sex + age.Z + (1 + age.Z | q | id))
+	
+		model4_fit <- brm(model4, data = dat, 
+								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
+								save_pars = save_pars()) 
+		saveRDS(model4_fit, "./models/model4_fit")
+	} else {
+		model4_fit <- readRDS("./models/model4_fit")
+	}
+
+	summary(model4_fit)
+```
+
+## Bivariate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
+### Model {.tabset .tabset-fade .tabset-pills}
+```{r, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+############# Bivariate Personality ##############################################
+#stan_bivar_shglm_activity_aggression <- stan(file = "./Code/stancode_bivar_shglm.stan",
+#                                             data = standata_bivar_shglm_activity_aggression,
+#                                             pars = save_pars, 
+#                                             iter = 6000, warmup = 2000, chains = 3, cores = 3)
+##################################################################################
+
+rerun5 = FALSE 
+
+	if(rerun5){
+			
+			# Note that the random effect notation: (1 | q |...) is needed to define whether you want to estimate correlations. Random effects with the same letter (i.e., "q") will indicate that one wished to model the correlation between Y1 and Y2 id. If you change letters so that are different it will not model the correlation. It is also one way to reduce how many parameters are estimated. 
+			
+			model5_agg1 <- bf(aggression ~ sex + age.Z + (1 | q | id))
+			model5_act2 <- bf(  activity ~ sex + age.Z + (1 | q | id))
+	
+		model5_fit <- brm(model5_agg1 + model5_act2, data = dat, 
+								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
+								save_pars = save_pars()) 
+		saveRDS(model5_fit, "./models/model5_fit")
+	} else {
+		model5_fit <- readRDS("./models/model5_fit")
+	}
+
+	summary(model5_fit)
+```
+## Bivariate Personality / Plasticity /Predictability (DHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
+### Model {.tabset .tabset-fade .tabset-pills}
+```{r, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+######## Bivariate Personality/Predictability/Plasticity ######################################
+#stan_bivar_dhglm_activity_aggression <- stan(file = "./Code/stancode_bivar_dhglm.stan", 
+#											data = 	standata_bivar_dhglm_activity_aggression, 
+#											pars = save_pars, iter = 6000, warmup = 2000, chains = 3, cores = 3)
+####################################################################################
+
+	rerun6 = FALSE
+		
+	if(rerun6){
+		# Note that the random effect notation: (1 | q |...) is needed to define whether you want to estimate correlations. Random effects with the same letter (i.e., "q") will indicate that one wished to model the correlation between Y1 and Y2 id, or say between sigma Y1 and Y2 etc. If you change letters so that are different it will not model the correlation. It is also one way to reduce how many parameters are estimated. 
+
+		model6_agg1 <- bf(   aggression ~ sex + age.Z + (1 + age.Z | p | id),
+						                  sigma ~ sex + age.Z + (1 | z | id))
+
+		model6_act2 <- bf(   activity ~ sex + age.Z + (1 + age.Z | p | id),
+						                sigma ~ sex + age.Z + (1 | z | id))
+
+	model6_fit <- brm(model6_agg1 + model6_act2, data = dat, 
+							iter = 6000, warmup = 2000, chains = 3, cores = 3, 
+							save_pars = save_pars()) 
+	saveRDS(model6_fit, "./models/model6_fit")
+
+	} else {
+		model6_fit <- readRDS("./models/model6_fit")
+	}
 ```
