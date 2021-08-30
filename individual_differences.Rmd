@@ -151,7 +151,7 @@ Load in the functions that will be needed to process output from the models to d
 		 	 
 ```
 
-# Running *brms* SHGLM and DHLGM models {.tabset}
+# Running *brms* SHGLM and DHGLM models {.tabset}
 
 ## Personality (SHGLM) {#personality-shglm .tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
