@@ -175,16 +175,16 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 		rerun1 = FALSE
 		
 		if(rerun1) {
-		        model1 <- bf(aggression ~ sex + age.Z + (1 | id))
-			model1_fit <- brms::brm(model1, data = dat, 
+		        formula_personality_shglm_aggression <- bf(aggression ~ sex + age.Z + (1 | id))
+			brms_personality_shglm_aggression <- brms::brm(formula_personality_shglm_aggression, data = dat, 
 									iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 									save_pars = save_pars())
-			saveRDS(model1_fit, "./models/model1_fit") 
+			saveRDS(brms_personality_shglm_aggression, "./brms_models/brms_personality_shglm_aggression") 
 		} else {
-			model1_fit <- readRDS(here("models","model1_fit"))
+			brms_personality_shglm_aggression <- readRDS(here::here("brms_models","brms_personality_shglm_aggression"))
 		}
 		
-		summary(model1_fit)
+		summary(brms_personality_shglm_aggression)
 ```
 
 ### Calculate CVm and Rpm {.tabset .tabset-fade .tabset-pills}
@@ -192,19 +192,18 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 ```{r pers_rpm_cv, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
 
 # (Step 1):  Get the average intercept from fixed effects.
-Bpm <- func_Bp(    B0 = brms::posterior_samples(model1_fit, pars = "Intercept")[,1], 
-		               B1 = brms::posterior_samples(model1_fit, pars = "sex")[,1])
+Bpm <- func_Bp(    B0 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "Intercept")[,1], 
+		               B1 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1])
 
 # (Step 2): Extract random intercept for ID. Numerator for eqn 34. Note these are standard deviations for between-individual differences in the mean model
-		sigma_m0 <- brms::posterior_samples(model1_fit, pars = "sd_id__Intercept")[,1]
-		sigma_m2 <- NA # here we have no random slope, so sigma_m = sigma_m0
+		sigma_m0 <- brms::posterior_samples(brms_personality_shglm_aggression, pars = "sd_id__Intercept")[,1]
 
 # (Step 3): Extract residual standard deviation
-		 sigma_e <- brms::posterior_samples(model1_fit, pars = "sigma")[,1]
+		 sigma_e <- brms::posterior_samples(brms_personality_shglm_aggression, pars = "sigma")[,1]
 		
 # (Step 4): Calculate fixed effect variance
-	var_fixed <- func_var_fixed(  B1 =  brms::posterior_samples(model1_fit, pars = "sex")[,1],
-		                            B2 =  brms::posterior_samples(model1_fit, pars = "age.Z")[,1],
+	var_fixed <- func_var_fixed(  B1 =  brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1],
+		                            B2 =  brms::posterior_samples(brms_personality_shglm_aggression, pars = "age.Z")[,1],
 		                            data = dat) 
 
 # (Step 5): Calculate total phenotypic variance
@@ -228,12 +227,12 @@ Bpm <- func_Bp(    B0 = brms::posterior_samples(model1_fit, pars = "Intercept")[
 
 # Results
 			personality_results <- data.frame( CVm = mean(CV_m),
-			                                   CVm.L = HPDinterval(mcmc(CV_m))[1],
-			                                   CVm.U = HPDinterval(mcmc(CV_m))[2],
+			                                   CVm.L = coda::HPDinterval(coda::mcmc(CV_m))[1],
+			                                   CVm.U = coda::HPDinterval(coda::mcmc(CV_m))[2],
 			                                   	Rpm =  mean(Rp_m),
-			                                   Rpm.L = 	HPDinterval(mcmc(Rp_m))[1],
-			                                   Rpm.U = 	HPDinterval(mcmc(Rp_m))[2])
-			flextable(personality_results)
+			                                   Rpm.L = 	coda::HPDinterval(coda::mcmc(Rp_m))[1],
+			                                   Rpm.U = 	coda::HPDinterval(coda::mcmc(Rp_m))[2])
+			flextable::flextable(personality_results)
 		
 		
 ```
@@ -256,19 +255,19 @@ Let's start by fitting a model to the aggression data to estimate both "personal
 	rerun2=FALSE
 	
 	if(rerun2){
-	    model2 <- bf(aggression ~ sex + age.Z + (1 | p | id),
+	    formula_personality_dhglm_aggression <- bf(aggression ~ sex + age.Z + (1 | p | id),
 	    			            sigma ~ sex + age.Z + (1 | p | id))
 
-		model2_fit <- brm(model2, data = dat, 
+		brms_personality_dhglm_aggression <- brm(formula_personality_dhglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
 		
-		saveRDS(model2_fit, "./models/model2_fit")
+		saveRDS(brms_personality_dhglm_aggression, "./brms_models/brms_personality_dhglm_aggression")
 	} else {
-		model2_fit <- readRDS("./models/model2_fit")
+		brms_personality_dhglm_aggression <- readRDS("./brms_models/brms_personality_dhglm_aggression")
 	}
 
-	summary(model2_fit)
+	summary(brms_personality_dhglm_aggression)
 ```
 
 ### Calculate CVm and Rpm {.tabset .tabset-fade .tabset-pills}
@@ -281,18 +280,18 @@ Here we now have two separate models: a mean model and a dispersion model.
 #################################
  
   # (Step 1): Extract the population coefficients for mean model
-		 	 B0_m <- brms::posterior_samples(model2_fit, pars = "b_Intercept")[,1]			 
-		 	 B1_m <- brms::posterior_samples(model2_fit, pars = "b_sex")[,1]	
-		 	 B2_m <- brms::posterior_samples(model2_fit, pars = "b_age.Z")[,1]	
+		 	 B0_m <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_Intercept")[,1]			 
+		 	 B1_m <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sex")[,1]	
+		 	 B2_m <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_age.Z")[,1]	
 	
 	# (Step 2): Extract the population coefficients for dispersion model	 
-		 	 B0_sd_exp <- brms::posterior_samples(model2_fit, pars = "b_sigma_Intercept")[,1]			
-		 	 B1_sd_exp <- brms::posterior_samples(model2_fit, pars = "b_sigma_sex")[,1]	
-		 	 B2_sd_exp <- brms::posterior_samples(model2_fit, pars = "b_sigma_age.Z")[,1]
+		 	 B0_sd_exp <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sigma_Intercept")[,1]			
+		 	 B1_sd_exp <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sigma_sex")[,1]	
+		 	 B2_sd_exp <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sigma_age.Z")[,1]
 		 	 
 	# (Step 3): Extract the random ID intercept variance components for random intercept. Note that we model ln(sd) so we need to convert to variance scale by multipling by 2.
-		 	  sigma_ID_m0 <- brms::posterior_samples(model2_fit, pars = "sd_id__Intercept")[,1]
-		 	 sigma_ID_sd0 <- brms::posterior_samples(model2_fit, 
+		 	  sigma_ID_m0 <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "sd_id__Intercept")[,1]
+		 	 sigma_ID_sd0 <- brms::posterior_samples(brms_personality_dhglm_aggression, 
 		 	                                         pars = "sd_id__sigma_Intercept")[,1]
 		 	  sigma_ID_v0 <- 2*sigma_ID_sd0
 		 	 
@@ -385,17 +384,17 @@ Here, using a random regression model, we can estimate a random intercept and sl
 	rerun3 = FALSE
 
 	if(rerun3){
-		    model3 <- bf(  aggression ~ sex + age.Z + (1 + age.Z | p | id))
+		    formula_stan_personality_plasticity_shglm_aggression <- bf(  aggression ~ sex + age.Z + (1 + age.Z | p | id))
 
-		model3_fit <- brm(model3, data = dat, 
+		brms_personality_plasticity_shglm_aggression <- brm(formula_stan_personality_plasticity_shglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
-		saveRDS(model3_fit, "./models/model3_fit")
+		saveRDS(brms_personality_plasticity_shglm_aggression, "./brms_models/brms_personality_plasticity_shglm_aggression")
 	} else {
-		model3_fit <- readRDS(here("models", "model3_fit"))
+		brms_personality_plasticity_shglm_aggression <- readRDS(here("brms_models", "brms_personality_plasticity_shglm_aggression"))
 	}
 
-	summary(model3_fit)
+	summary(brms_personality_plasticity_shglm_aggression)
 ```
 
 ### Personality-Plasticity Association {.tabset .tabset-fade .tabset-pills}
@@ -405,9 +404,9 @@ Here, using the model we can calculate the personality-plasticity association (i
 ```{r pers_plas, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
      
       # Extract blups
-       blups_IDmo <- brms::posterior_samples(model3_fit, pars = "r_id[[1-9].*,Intercept]")
-      blups_IDm2 <- brms::posterior_samples(model3_fit, pars = "r_id[[1-9].*,age.Z]")
-             Bm2 <- brms::posterior_samples(model3_fit, pars = "b_age.Z", fixed = TRUE)
+       blups_IDmo <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,Intercept]")
+      blups_IDm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,age.Z]")
+             Bm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "b_age.Z", fixed = TRUE)
   
       # Calculate the absolute magnitude of individuals slope and each individuals slope deviation (Eqn. 9 of main manuscript)
         abs_slope <- apply(blups_IDm2, 2, function(x) abs(Bm2[,1] + x))
@@ -444,18 +443,18 @@ In this section we are modeling a random slope and intercept for both the mean a
 	rerun4 = FALSE 
 
 	if(rerun4){
-	    	model4 <- bf(  aggression ~ sex + age.Z + (1 + age.Z | q | id) ,
+	    formula_personality_plasticity_dhglm_aggression <- bf(  aggression ~ sex + age.Z + (1 + age.Z | q | id) ,
 	    			               sigma ~ sex + age.Z + (1 + age.Z | q | id))
 	
-		model4_fit <- brm(model4, data = dat, 
+		brms_personality_plasticity_dhglm_aggression <- brm(formula_personality_plasticity_dhglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
-		saveRDS(model4_fit, "./models/model4_fit")
+		saveRDS(brms_personality_plasticity_dhglm_aggression, "./brms_models/brms_personality_plasticity_dhglm_aggression")
 	} else {
-		model4_fit <- readRDS(here("models", "model4_fit"))
+		brms_personality_plasticity_dhglm_aggression <- readRDS(here("brms_models", "brms_personality_plasticity_dhglm_aggression"))
 	}
 
-	summary(model4_fit)
+	summary(brms_personality_plasticity_dhglm_aggression)
 ```
 
 ### Calculate CVm and Rpm from Random Slope Model {.tabset .tabset-fade .tabset-pills}
@@ -468,24 +467,24 @@ Random regression for both the mean and dispersion model requires some modificat
 #################################
  
   # (Step 1): Extract the population coefficients for mean model
-		 	 B0_m <- brms::posterior_samples(model4_fit, pars = "b_Intercept")[,1]			 
-		 	 B1_m <- brms::posterior_samples(model4_fit, pars = "b_sex")[,1]	
-		 	 B2_m <- brms::posterior_samples(model4_fit, pars = "b_age.Z")[,1]	
+		 	 B0_m <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_Intercept")[,1]			 
+		 	 B1_m <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sex")[,1]	
+		 	 B2_m <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_age.Z")[,1]	
 	
 	# (Step 2): Extract the population coefficients for dispersion model	 
-		 	 B0_sd_exp <- brms::posterior_samples(model4_fit, pars = "b_sigma_Intercept")[,1]			
-		 	 B1_sd_exp <- brms::posterior_samples(model4_fit, pars = "b_sigma_sex")[,1]	
-		 	 B2_sd_exp <- brms::posterior_samples(model4_fit, pars = "b_sigma_age.Z")[,1]
+		 	 B0_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_Intercept")[,1]			
+		 	 B1_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_sex")[,1]	
+		 	 B2_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_age.Z")[,1]
 		 	 
 	# (Step 3): Extract the random ID intercept variance components for random intercept. Note that we model ln(sd) so we need to convert to variance scale by multipling by 2.
-		 	  sigma_ID_m0 <- brms::posterior_samples(model4_fit, pars = "sd_id__Intercept")[,1]
-		 	 sigma_ID_sd0 <- brms::posterior_samples(model4_fit, 
+		 	  sigma_ID_m0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__Intercept")[,1]
+		 	 sigma_ID_sd0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, 
 		 	                                         pars = "sd_id__sigma_Intercept")[,1]
 		 	  sigma_ID_v0 <- 2*sigma_ID_sd0
 	
 	# (Step 4): **New step as we now have a sd for the random slopes.**
-	     sigma_ID_m2 <- brms::posterior_samples(model4_fit, pars = "sd_id__age.Z")[,1]
-	    sigma_ID_sd2 <- brms::posterior_samples(model4_fit, pars = "sd_id__sigma_age.Z")[,1]
+	     sigma_ID_m2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__age.Z")[,1]
+	    sigma_ID_sd2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__sigma_age.Z")[,1]
 	     sigma_ID_v2 <- 2*sigma_ID_sd2
 		 	  
 	# (Step 5): Calculate the fixed effect variance for the mean model (var_fixed_m) and the dispersion model (B_pv). Note here that the calculations are the same because we assume intercept at an average age.
@@ -580,18 +579,18 @@ rerun5 = FALSE
 			
 			# Note that the random effect notation: (1 | q |...) is needed to define whether you want to estimate correlations. Random effects with the same letter (i.e., "q") will indicate that one wished to model the correlation between Y1 and Y2 id. If you change letters so that are different it will not model the correlation. It is also one way to reduce how many parameters are estimated. 
 			
-			model5_agg1 <- bf(aggression ~ sex + age.Z + (1 | q | id))
-			model5_act2 <- bf(  activity ~ sex + age.Z + (1 | q | id))
+			formula_bivar_shglm_aggression <- bf(aggression ~ sex + age.Z + (1 | q | id))
+			formula_bivar_shglm_activity <- bf(activity ~ sex + age.Z + (1 | q | id))
 	
-		model5_fit <- brm(model5_agg1 + model5_act2, data = dat, 
+		brms_bivar_shglm_activity_aggression <- brm(formula_bivar_shglm_aggression + formula_bivar_shglm_activity, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
-		saveRDS(model5_fit, "./models/model5_fit")
+		saveRDS(brms_bivar_shglm_activity_aggression, "./brms_models/brms_bivar_shglm_activity_aggression")
 	} else {
-		model5_fit <- readRDS(here("models", "model5_fit"))
+		brms_bivar_shglm_activity_aggression <- readRDS(here("brms_models", "brms_bivar_shglm_activity_aggression"))
 	}
 
-	summary(model5_fit)
+	summary(brms_bivar_shglm_activity_aggression)
 ```
 
 ## Bi-variate Personality / Plasticity / Predictability (DHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
@@ -612,18 +611,18 @@ In this section we briefly show readers how they can fit a bi-variate model with
 	if(rerun6){
 		# Note that the random effect notation: (1 | q |...) is needed to define whether you want to estimate correlations. Random effects with the same letter (i.e., "q") will indicate that one wished to model the correlation between Y1 and Y2 id, or say between sigma Y1 and Y2 etc. If you change letters so that are different it will not model the correlation. It is also one way to reduce how many parameters are estimated. 
 
-		model6_agg1 <- bf(   aggression ~ sex + age.Z + (1 + age.Z | p | id),
+		formula_bivar_dhglm_aggression <- bf(   aggression ~ sex + age.Z + (1 + age.Z | p | id),
 						                  sigma ~ sex + age.Z + (1 | z | id))
 
-		model6_act2 <- bf(   activity ~ sex + age.Z + (1 + age.Z | p | id),
+		formula_bivar_dhglm_activity <- bf(   activity ~ sex + age.Z + (1 + age.Z | p | id),
 						                sigma ~ sex + age.Z + (1 | z | id))
 
-	model6_fit <- brm(model6_agg1 + model6_act2, data = dat, 
+	brms_bivar_dhglm_activity_aggression <- brm(formula_bivar_dhglm_aggression + formula_bivar_dhglm_activity, data = dat, 
 							iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 							save_pars = save_pars()) 
-	saveRDS(model6_fit, "./models/model6_fit")
+	saveRDS(brms_bivar_dhglm_activity_aggression, "./brms_models/brms_bivar_dhglm_activity_aggression")
 
 	} else {
-		model6_fit <- readRDS(here("models", "model6_fit"))
+		brms_bivar_dhglm_activity_aggression <- readRDS(here("brms_models", "brms_bivar_dhglm_activity_aggression"))
 	}
 ```
