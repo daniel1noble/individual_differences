@@ -20,7 +20,7 @@ options(digits=2)
 
 ```{r klippy, echo=FALSE, include=TRUE, message=FALSE, warning=FALSE}
 #install.packages("devtools")
-remotes::install_github("rlesur/klippy")
+#remotes::install_github("rlesur/klippy")
 klippy::klippy(tooltip_message = 'Click to Copy Code', tooltip_success = 'Done', position = 'right', color = "red")
 ```
 
@@ -38,7 +38,7 @@ Readers will need to download the data and model fits (unless they want to rerun
 ```{r loadpackages, echo = TRUE, results = "hide", messages = FALSE, class.source='klippy'}
 # install.packages("pacman")
 # Load Libraries and relevant data
-		pacman::p_load(brms, tidyverse, coda, MCMCglmm, bayesplot, here, formatR, flextable)	
+		pacman::p_load(klippy, brms, dplyr, coda, here, flextable)	
 
 		
 # Get the raw. We need this for back transformation from z-scale
@@ -587,7 +587,7 @@ rerun5 = FALSE
 								save_pars = save_pars()) 
 		saveRDS(brms_bivar_shglm_activity_aggression, "./brms_models/brms_bivar_shglm_activity_aggression")
 	} else {
-		brms_bivar_shglm_activity_aggression <- readRDS(here("brms_models", "brms_bivar_shglm_activity_aggression"))
+		brms_bivar_shglm_activity_aggression <- readRDS(here::here("brms_models", "brms_bivar_shglm_activity_aggression"))
 	}
 
 	summary(brms_bivar_shglm_activity_aggression)
@@ -623,6 +623,8 @@ In this section we briefly show readers how they can fit a bi-variate model with
 	saveRDS(brms_bivar_dhglm_activity_aggression, "./brms_models/brms_bivar_dhglm_activity_aggression")
 
 	} else {
-		brms_bivar_dhglm_activity_aggression <- readRDS(here("brms_models", "brms_bivar_dhglm_activity_aggression"))
+		brms_bivar_dhglm_activity_aggression <- readRDS(here::here("brms_models", "brms_bivar_dhglm_activity_aggression"))
 	}
+
+summary(brms_bivar_dhglm_activity_aggression)
 ```
