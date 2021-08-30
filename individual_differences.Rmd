@@ -31,12 +31,6 @@ Rose E. O'Dea, Daniel W.A. Noble and Shinichi Nakagawa 2021. *Unifying individua
 
 We only fit an exemplar set of models from our worked example. More specifically, we focus on a subset of models using two traits (aggression and activity) to demonstrate how to fit single- and double- hierarchical generalized linear models (abbreviated as SHGLM and DHGLM, respectively). This includes uni-variate and bi-variate (two trait) models. For a selection of models we also show how to: 1) calculate repeatability and the coefficient of variation for the mean and dispersion models, and 2) extract and manipulate individual BLUPs (best linear unbiased predictors) to estimate between-individual correlations outlined in our manuscript.
 
-# Stan models for comparison
-```{r}
-
-```
-
-
 # R Packages, Data and Model Fits
 Readers will need to download the data and model fits (unless they want to rerun the models) from our [Open Science Framework (OSF) Project Site](http://doi.org/10.17605/OSF.IO/V3QAX). Once downloaded and placed in your working directory run the following code to load the data sets and R packages:
 
@@ -143,17 +137,6 @@ Load in the functions that will be needed to process output from the models to d
         return(x)
 		 }	 
 		 
-  # within-individual standard deviation with a random slope for dispersion model
-	  func_var_within_slope <- function(Bpv, sigma_v0, var_fixed_v, sigma_ID_v2){
-	  
-	  # summed variance components
-	  var_within_exp <- func_sum_var(vars = data.frame(sigma_v0^2, var_fixed_v, sigma_ID_v2))
-	  # conversion back from log scale
-	  var_within <- func_ln_convert(mu_ln = Bpv, sigma_ln = sqrt(var_within_exp))$mu_raw
-	  
-	  return(var_within)
-	}
-	
 		 
 		# Function takes random slopes and intercepts and calculates the between individual correlation between them and returns this correlation for each row (i.e., posterior sampling iteration). It returns a posterior distribution of the correlation. 
 		 
@@ -171,7 +154,6 @@ Load in the functions that will be needed to process output from the models to d
 # Running *brms* SHGLM and DHLGM models {.tabset}
 
 ## Personality (SHGLM) {#personality-shglm .tabset .tabset-fade .tabset-pills}
-
 ### Model {.tabset .tabset-fade .tabset-pills}
 
 Let's start by fitting a model to the aggression data to estimate "personality".
@@ -203,7 +185,9 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 
 ### Calculate CVm and Rpm {.tabset .tabset-fade .tabset-pills}
 
-```{r pers_rpm_cv, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+We demonstrate the calculation of the coefficient of variation ($CV_m$) and repeatability ($Rp_m$) of the mean from our SHGLM. We compare the results to the `stan` model results (i.e., `stanproc_`) from our worked example.
+
+```{r pers_rpm_cv, include=TRUE, results = "hide",  message=FALSE, warning=FALSE, class.source='klippy'}
 # (Step 1):  Get the average intercept from fixed effects.
     Bpm <- func_Bp(B0 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "Intercept")[,1], 
                    B1 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1])
@@ -251,6 +235,10 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 		mean(Rp_m)
 		mean(stanproc_personality_shglm_aggression$Rp1_mu)
 
+
+```
+
+```{r, message=FALSE, warning=FALSE, class.source='klippy'}
 # Results
 			personality_results <- data.frame( CVm = mean(CV_m),
 			                                   CVm.L = quantile(CV_m, 0.025),
@@ -258,14 +246,17 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 			                                   	Rpm =  mean(Rp_m),
 			                                   Rpm.L = 	quantile(Rp_m, 0.025),
 			                                   Rpm.U = 	quantile(Rp_m, 0.975))
-			flextable::flextable(personality_results)
-		
-		
+			flextable::flextable(personality_results) %>% 
+			flextable::compose(part = "header", j = c(1:6), value = c(as_paragraph("CV", as_sub("m")),
+																																as_paragraph("95% CI", as_sub("lower")),
+																																as_paragraph("95% CI", as_sub("upper")),
+																																as_paragraph("Rp", as_sub("m")),
+																																as_paragraph("95% CI", as_sub("lower")),
+																																as_paragraph("95% CI", as_sub("upper"))) ) %>%
+			align(align = "center", part = "header") %>%  fit_to_width(max_width = 7)
 		
 ```
-
 ## Personality / Predictability (DHGLM) {#personality-predictability-dhglm .tabset .tabset-fade .tabset-pills}
-
 ### Model {.tabset .tabset-fade .tabset-pills}
 
 Let's start by fitting a model to the aggression data to estimate both "personality" (mean model) and "predictability" (dispersion model).
@@ -301,7 +292,7 @@ Let's start by fitting a model to the aggression data to estimate both "personal
 
 Here we now have two separate models: a mean model and a dispersion model.
 
-```{r personality_pred_cvm_rpm, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+```{r personality_pred_cvm_rpm, results = "hide", include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
 #################################
 # Mean and Dispersion Parameters
 #################################
@@ -439,14 +430,24 @@ Here we now have two separate models: a mean model and a dispersion model.
 
 pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", ""),
                                  type = c("Rpm", "CVm", "Rp_var", "CV_var"),
-                                Est. = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
+                                Est = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
                                 L.CI= c(quantile(Rp_mu,0.025), quantile(CV_mu,0.025), quantile(Rp_var,0.025),quantile(CV_var,0.025)), 
-                                       U.CI= c(quantile(Rp_mu,0.975), quantile(CV_mu,0.975), quantile(Rp_var,0.975),quantile(CV_var,0.975)))
-flextable::flextable(pers_pred_results)
+                                U.CI= c(quantile(Rp_mu,0.975), quantile(CV_mu,0.975), quantile(Rp_var,0.975),quantile(CV_var,0.975)))
+flextable::flextable(pers_pred_results) %>%
+flextable::compose(part = "header", j = c(1:5), value = c(as_paragraph("Model"),
+																													as_paragraph("Estimate Type"),
+																													as_paragraph("Mean Estimate"),
+																													as_paragraph("95% CI", as_sub("lower")),
+																													as_paragraph("95% CI", as_sub("upper")) )) %>%
+flextable::compose(part = "body", i = c(1:4), j = 2, value = c(as_paragraph("Rp", as_sub("m")),
+																																as_paragraph("CV", as_sub("m")),
+																																as_paragraph("Rp", as_sub("v")),
+																																as_paragraph("CV", as_sub("v")) )) %>%	
+		align(align = "center", part = "header") %>% 	fit_to_width(max_width = 7)
 ```
 
-## Personality & Plasticity (SHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
 
+## Personality & Plasticity (SHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
 
 Here, using a random regression model, we can estimate a random intercept and slope along with the correlation between the intercept and slopes. The correlation between intercept and slope at the individual level is estimated directly from the model but we can also store BLUPs (`save_pars = save_pars()`) and processes these after fitting the model to estimate the correlations described within our paper.
@@ -480,7 +481,7 @@ Here, using a random regression model, we can estimate a random intercept and sl
 
 Here, using the model we can calculate the personality-plasticity association (i.e., the correlation between individual intercepts and either slope differences, or slope magnitudes).
 
-```{r pers_plas, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+```{r pers_plas, include=TRUE, results = "hide", message=FALSE, warning=FALSE, class.source='klippy'}
 # Equation 8: correlation between intercept and slope deviations
 
 cor_slope_dif <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "cor_id__Intercept__age.Z", fixed = TRUE)[,1]
@@ -503,9 +504,6 @@ mean(stanproc_personality_plasticity_shglm_aggression$cor_ID1_m0_ID1_m2)
       # Check that we have 12,000 samples from posterior
         length(cor_slope_mag)
       
-      # Look at distribution of correlation coefficients
-        hist(cor_slope_mag)
-      
       # Estimate the mean and 95% CI  
          mean(cor_slope_mag)
          quantile(cor_slope_mag, c(0.025, 0.975))
@@ -514,8 +512,16 @@ mean(stanproc_personality_plasticity_shglm_aggression$cor_ID1_m0_ID1_m2)
             
 ```
 
-## Personality & Predictability & Plasticity (DHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
+We can have a look at the posterior distributions of our correlaton estimates for the two different types. 
 
+```{r, include=TRUE, class.source='klippy'}
+      # Look at distribution of correlation coefficients
+       par(mfrow = c(1,2))
+        hist(cor_slope_dif, main = "Slope / Intercept Deviations")        
+        hist(cor_slope_mag, main = "Slope Magnitudes / Intercept Deviations")
+```
+
+## Personality & Predictability & Plasticity (DHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
 
 In this section we are modelling a random slope and intercept in the mean model, and a random intercept in the dispersion model. We will also estimate the correlation between slopes and intercepts across the models.
@@ -532,7 +538,7 @@ In this section we are modelling a random slope and intercept in the mean model,
 
 	if(rerun4){
 	    formula_personality_plasticity_dhglm_aggression <- bf(  aggression ~ sex + age.Z + (1 + age.Z | q | id) ,
-	    			               sigma ~ sex + age.Z + (1 | q | id)) #@ROSE: please check formula. 
+	    			                                                       sigma ~ sex + age.Z + (1 | q | id))  
 	
 		brms_personality_plasticity_dhglm_aggression <- brm(formula_personality_plasticity_dhglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
@@ -549,7 +555,7 @@ In this section we are modelling a random slope and intercept in the mean model,
 
 Random regression for both the mean and dispersion model requires some modifications to calculate repeatability and the coefficient of variation. '\*\*' in the annotated steps below indicate what changes from previous models.
 
-```{r personality_slope_cvm_rpm, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
+```{r personality_slope_cvm_rpm, results = "hide", include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
 #################################
 # Mean and Dispersion Parameters
 #################################
@@ -574,7 +580,7 @@ Random regression for both the mean and dispersion model requires some modificat
 		 	 B2_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_age.Z")[,1]
 		 	 
 		 	 mean(2*B0_sd_exp)
-		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_v0) #@ROSE: DIFFERENT, probably because the stan model doesn't include a random slope
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_v0) 
 		 	 
 		 	 mean(2*B1_sd_exp)
 		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_v1)
@@ -600,11 +606,6 @@ Random regression for both the mean and dispersion model requires some modificat
 	     
 	     mean(sigma_ID_m2)
 	     mean(stanproc_personality_plasticity_dhglm_aggression$sigma_ID1_m2)
-	     
-	     #@ROSE: we don't want the random slope, the dataset is not good enough for it
-	     sigma_ID_sd2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__sigma_age.Z")[,1]
-	     sigma_ID_v2 <- 2*sigma_ID_sd2
-	     
 		 	  
 	# (Step 5): Calculate the fixed effect variance for the mean model (var_fixed_m) and the dispersion model (B_pv). Note here that the calculations are the same because we assume intercept at an average age.
 		 	 B_pm <- func_Bp(B0 = B0_m, B1 = B1_m)
@@ -631,19 +632,18 @@ Random regression for both the mean and dispersion model requires some modificat
 ###################################
 
 	  # (Step 1): ** Calculate average within-individual / residual variance **
-		 	 sigma_w <- func_var_within_slope(Bpv = B_pv, 
+		 	 sigma_w <- func_var_within(           Bpv = B_pv, 
 		 	                                  sigma_v0 = sigma_ID_v0, 
-		 	                                  var_fixed_v = var_fixed_v,
-		 	                                  sigma_ID_v2 = sigma_ID_v2)
+		 	                                  var_fixed_v = var_fixed_v)
 		 	 
 		 	 mean(sigma_w)
-		 	 mean(stanproc_personality_plasticity_dhglm_aggression$sigma1_w) #@ROSE: different, because this model doesn't have a random slope
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$sigma1_w) 
 		 	 
 		# (Step 2): Calculate total phenotypic variance. Note here that we add in the random slope variance now
 		 	 var_p <- func_sum_var(vars = data.frame(sigma_ID_m0^2, sigma_ID_m2^2, var_fixed_m, sigma_w^2))
 		 	 
 		 	 mean(var_p)
-		 	 mean(stanproc_personality_plasticity_dhglm_aggression$var1_p) #@ROSE: different
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$var1_p)
 		 	 
 		# (Step 3): Calculate repeatability
 		 	 Rp_mu <- sigma_ID_m0^2/var_p
@@ -678,8 +678,8 @@ Random regression for both the mean and dispersion model requires some modificat
 		 	 mean(Rp_var)
 		 	 mean(stanproc_personality_plasticity_dhglm_aggression$Rp1_var)
 		 	
-		# (Step 2): ** Sum of IDv0 (intercept), IDv2 (slope) and fixedV = total variance in residual variance on log-normal scale. See eqn 39. in MS.** 
-		 	   var_residvar_exp <- func_sum_var(vars = data.frame(sigma_ID_v0^2, var_fixed_v, sigma_ID_v2)) #@ROSE: need to change this to not include random slope
+		# (Step 2): ** Sum of IDv0 (intercept), and fixedV = total variance in residual variance on log-normal scale. See eqn 39. in MS.** 
+		 	   var_residvar_exp <- func_sum_var(vars = data.frame(sigma_ID_v0^2, var_fixed_v)) 
 		 	   
     # (Step 3): Converting back to same scale as mean model  
 		 	   sigma_residvar <- func_ln_convert(mu_ln = B_pv, 
@@ -704,14 +704,26 @@ pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", 
                                 Est. = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
                                 L.CI= c(quantile(Rp_mu,0.025), quantile(CV_mu,0.025), quantile(Rp_var,0.025),quantile(CV_var,0.025)), 
                                        U.CI= c(quantile(Rp_mu,0.975), quantile(CV_mu,0.975), quantile(Rp_var,0.975),quantile(CV_var,0.975)))
-flextable::flextable(pers_pred_results)
+
+flextable::flextable(pers_pred_results) %>% 
+flextable::compose(part = "header", j = c(1:5), value = c(as_paragraph("Model"),
+																													as_paragraph("Estimate Type"),
+																													as_paragraph("Mean Estimate"),
+																																as_paragraph("95% CI", as_sub("lower")),
+																																as_paragraph("95% CI", as_sub("upper")) )) %>%
+flextable::compose(part = "body", i = c(1:4), j = 2, value = c(as_paragraph("Rp", as_sub("m")),
+																																as_paragraph("CV", as_sub("m")),
+																																as_paragraph("Rp", as_sub("v")),
+																																as_paragraph("CV", as_sub("v")) )) %>%	
+			align(align = "center", part = "header") %>%  fit_to_width(max_width = 7) 
+
 ```
 
-## Bi-variate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 
+## Bi-variate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
 
-In this section we briefly show readers how they can fit a bi-variate model with aggression and activity, estimating intercepts within and among the traits at the individual-level. The principles for calculating repeatability and the coefficient of variation are the same as that outlined in [Personality (SHGLM)](#personality-shglm).
+In this section we briefly show readers how they can fit a bi-variate model with aggression and activity, estimating intercepts within and among the traits at the individual-level. The principles for calculating repeatability and the coefficient of variation are the same as that outlined in [Personality (SHGLM)](#personality-shglm ).
 
 ```{r, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
 ############# Bi-variate Personality ##############################################
@@ -741,8 +753,8 @@ rerun5 = FALSE
 	summary(brms_bivar_shglm_activity_aggression)
 ```
 
-## Bi-variate Personality / Plasticity / Predictability (DHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 
+## Bi-variate Personality / Plasticity / Predictability (DHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
 
 In this section we briefly show readers how they can fit a bi-variate model with aggression and activity, estimating intercepts, slopes and correlations within and among the traits. The principles for calculating repeatability and the coefficient of variation are the same as that outlined in [Personality / Predictability (DHGLM)](#personality-predictability-dhglm).
