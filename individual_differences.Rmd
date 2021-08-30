@@ -283,7 +283,7 @@ Let's start by fitting a model to the aggression data to estimate both "personal
 	
 	if(rerun2){
 	    formula_personality_dhglm_aggression <- bf(aggression ~ sex + age.Z + (1 | p | id),
-	    			            sigma ~ sex + age.Z + (1 | p | id))
+	    			            sigma ~ sex + age.Z + (1 | p | id)) 
 
 		brms_personality_dhglm_aggression <- brm(formula_personality_dhglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
@@ -445,7 +445,7 @@ pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", 
 flextable::flextable(pers_pred_results)
 ```
 
-## Personality / Plasticity (SHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
+## Personality & Plasticity (SHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
 
 ### Model {.tabset .tabset-fade .tabset-pills}
 
@@ -514,11 +514,11 @@ mean(stanproc_personality_plasticity_shglm_aggression$cor_ID1_m0_ID1_m2)
             
 ```
 
-## Personality / Predictability / Plasticity (DHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
+## Personality & Predictability & Plasticity (DHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
 
 ### Model {.tabset .tabset-fade .tabset-pills}
 
-In this section we are modeling a random slope and intercept for both the mean and dispersion models. We will also estimate the correlation between slopes and intercepts across the models.
+In this section we are modelling a random slope and intercept in the mean model, and a random intercept in the dispersion model. We will also estimate the correlation between slopes and intercepts across the models.
 
 ```{r, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
 ######## Personality/Plasticity/Predictability ###################
@@ -532,7 +532,7 @@ In this section we are modeling a random slope and intercept for both the mean a
 
 	if(rerun4){
 	    formula_personality_plasticity_dhglm_aggression <- bf(  aggression ~ sex + age.Z + (1 + age.Z | q | id) ,
-	    			               sigma ~ sex + age.Z + (1 + age.Z | q | id))
+	    			               sigma ~ sex + age.Z + (1 | q | id)) #@ROSE: please check formula. 
 	
 		brms_personality_plasticity_dhglm_aggression <- brm(formula_personality_plasticity_dhglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
