@@ -264,7 +264,7 @@ Let's start by fitting a model to the aggression data to estimate both "personal
 		
 		saveRDS(brms_personality_dhglm_aggression, "./brms_models/brms_personality_dhglm_aggression")
 	} else {
-		brms_personality_dhglm_aggression <- readRDS("./brms_models/brms_personality_dhglm_aggression")
+		brms_personality_dhglm_aggression <- readRDS(here::here("brms_models", "brms_personality_dhglm_aggression"))
 	}
 
 	summary(brms_personality_dhglm_aggression)
@@ -360,9 +360,9 @@ Here we now have two separate models: a mean model and a dispersion model.
 pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", ""),
                                  type = c("Rpm", "CVm", "Rp_var", "CV_var"),
                                 Est. = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
-                                L.CI= c(HPDinterval(mcmc(Rp_mu))[1], HPDinterval(mcmc(CV_mu))[1], HPDinterval(mcmc(Rp_var))[1],HPDinterval(mcmc(CV_var))[1]), 
-                                       U.CI= c(HPDinterval(mcmc(Rp_mu))[2], HPDinterval(mcmc(CV_mu))[2], HPDinterval(mcmc(Rp_var))[2],HPDinterval(mcmc(CV_var))[2]))
-flextable(pers_pred_results)
+                                L.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[1], coda::HPDinterval(coda::mcmc(CV_mu))[1], coda::HPDinterval(coda::mcmc(Rp_var))[1],coda::HPDinterval(coda::mcmc(CV_var))[1]), 
+                                       U.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[2], coda::HPDinterval(coda::mcmc(CV_mu))[2], coda::HPDinterval(coda::mcmc(Rp_var))[2],coda::HPDinterval(coda::mcmc(CV_var))[2]))
+flextable::flextable(pers_pred_results)
 
 ```
 
@@ -391,7 +391,7 @@ Here, using a random regression model, we can estimate a random intercept and sl
 								save_pars = save_pars()) 
 		saveRDS(brms_personality_plasticity_shglm_aggression, "./brms_models/brms_personality_plasticity_shglm_aggression")
 	} else {
-		brms_personality_plasticity_shglm_aggression <- readRDS(here("brms_models", "brms_personality_plasticity_shglm_aggression"))
+		brms_personality_plasticity_shglm_aggression <- readRDS(here::here("brms_models", "brms_personality_plasticity_shglm_aggression"))
 	}
 
 	summary(brms_personality_plasticity_shglm_aggression)
@@ -404,7 +404,7 @@ Here, using the model we can calculate the personality-plasticity association (i
 ```{r pers_plas, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
      
       # Extract blups
-       blups_IDmo <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,Intercept]")
+       blups_IDm0 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,Intercept]")
       blups_IDm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,age.Z]")
              Bm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "b_age.Z", fixed = TRUE)
   
@@ -412,7 +412,7 @@ Here, using the model we can calculate the personality-plasticity association (i
         abs_slope <- apply(blups_IDm2, 2, function(x) abs(Bm2[,1] + x))
       
       # Using absolute slope and the individual deviations for each individuals intercept calculate the correlation across the 248 fish for each posterior sample of individual blups
-        cors <- cor_calc(slopes = abs_slope, intercepts = blups_IDmo)
+        cors <- cor_calc(slopes = abs_slope, intercepts = blups_IDm0)
        
       # Check that we have 12,000 samples from posterior
         length(cors)
@@ -422,7 +422,7 @@ Here, using the model we can calculate the personality-plasticity association (i
       
       # Estimate the mean and 95% CI  
          mean(cors)
-         HPDinterval(mcmc(cors))
+         coda::HPDinterval(coda::mcmc(cors))
             
 ```
 
@@ -451,7 +451,7 @@ In this section we are modeling a random slope and intercept for both the mean a
 								save_pars = save_pars()) 
 		saveRDS(brms_personality_plasticity_dhglm_aggression, "./brms_models/brms_personality_plasticity_dhglm_aggression")
 	} else {
-		brms_personality_plasticity_dhglm_aggression <- readRDS(here("brms_models", "brms_personality_plasticity_dhglm_aggression"))
+		brms_personality_plasticity_dhglm_aggression <- readRDS(here::here("brms_models", "brms_personality_plasticity_dhglm_aggression"))
 	}
 
 	summary(brms_personality_plasticity_dhglm_aggression)
@@ -553,9 +553,9 @@ Random regression for both the mean and dispersion model requires some modificat
 pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", ""),
                                  type = c("Rpm", "CVm", "Rp_var", "CV_var"),
                                 Est. = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
-                                L.CI= c(HPDinterval(mcmc(Rp_mu))[1], HPDinterval(mcmc(CV_mu))[1], HPDinterval(mcmc(Rp_var))[1],HPDinterval(mcmc(CV_var))[1]), 
-                                       U.CI= c(HPDinterval(mcmc(Rp_mu))[2], HPDinterval(mcmc(CV_mu))[2], HPDinterval(mcmc(Rp_var))[2],HPDinterval(mcmc(CV_var))[2]))
-flextable(pers_pred_results)
+                                L.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[1], coda::HPDinterval(coda::mcmc(CV_mu))[1], coda::HPDinterval(coda::mcmc(Rp_var))[1],coda::HPDinterval(coda::mcmc(CV_var))[1]), 
+                                       U.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[2], coda::HPDinterval(coda::mcmc(CV_mu))[2], coda::HPDinterval(coda::mcmc(Rp_var))[2],coda::HPDinterval(coda::mcmc(CV_var))[2]))
+flextable::flextable(pers_pred_results)
 
 ```
 
