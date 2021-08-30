@@ -37,7 +37,7 @@ Readers will need to download the data and model fits (unless they want to rerun
 ```{r loadpackages, echo = TRUE, results = "hide", messages = FALSE, class.source='klippy'}
 # install.packages("pacman")
 # Load Libraries and relevant data
-		pacman::p_load(klippy, brms, dplyr, coda, here, flextable)	
+		pacman::p_load(klippy, brms, dplyr, here, flextable)	
 
 		
 # Get the raw data. We need this for back transformation from z-scale
@@ -57,14 +57,14 @@ Readers will need to download the data and model fits (unless they want to rerun
 		                      social = scale(stim.dist_0_5cm_dur_Social),
 		                      id = fish_ID)	
 
-# Stan models for comparison
+# processed Stan models for comparison
 load("./Results/stanmodels_processed.Rdata")
 stanproc_personality_shglm_aggression <- stanmods[stanmods$model=="personality shglm" & stanmods$behaviour1=="aggression",]
 stanproc_personality_dhglm_aggression <- stanmods[stanmods$model=="personality dhglm" & stanmods$behaviour1=="aggression",]
 stanproc_personality_plasticity_shglm_aggression <- stanmods[stanmods$model=="personality & plasticity shglm" & stanmods$behaviour1=="aggression",]
 stanproc_personality_plasticity_dhglm_aggression <- stanmods[stanmods$model=="personality & plasticity dhglm" & stanmods$behaviour1=="aggression",]
-stan_bivar_shglm_activity_aggression <- stanmods[stanmods$model=="bivariate shglm" & stanmods$behaviour1=="activity" & stanmods$behaviour2=="aggression",]
-stan_bivar_dhglm_activity_aggression <- stanmods[stanmods$model=="bivariate dhglm" & stanmods$behaviour1=="activity" & stanmods$behaviour2=="aggression",]
+stanproc_bivar_shglm_activity_aggression <- stanmods[stanmods$model=="bivariate shglm" & stanmods$behaviour1=="activity" & stanmods$behaviour2=="aggression",]
+stanproc_bivar_dhglm_activity_aggression <- stanmods[stanmods$model=="bivariate dhglm" & stanmods$behaviour1=="activity" & stanmods$behaviour2=="aggression",]
 	  
 ```
 
@@ -719,6 +719,50 @@ flextable::compose(part = "body", i = c(1:4), j = 2, value = c(as_paragraph("Rp"
 
 ```
 
+### Associations between Personality, Plasticity, and Predictability {.tabset .tabset-fade .tabset-pills}
+
+```{r pers_plas_pred, include=TRUE, results = "hide", message=FALSE, warning=FALSE, class.source='klippy'}
+# PERSONALITY-PLASTICITY ASSOCIATIONS
+# Equation 8: correlation between intercept and slope deviations
+brms_cor_ID1_m0_ID1_m2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "cor_id__Intercept__age.Z", fixed = TRUE)[,1]
+
+mean(brms_cor_ID1_m0_ID1_m2)
+mean(stanproc_personality_plasticity_dhglm_aggression$cor_ID1_m0_ID1_m2)
+
+# Equation 9: correlation between intercept differences and slope magnitudes   
+      # Extract blups
+       blups_IDm0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "r_id[[1-9].*,Intercept]")
+       blups_IDm2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "r_id[[1-9].*,age.Z]")
+       B_m2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_age.Z", fixed = TRUE)[,1]
+      
+      # Calculate the absolute magnitude of individuals slope and each individuals slope deviation (Eqn. 9 of main manuscript)
+        abs_slope <- apply(blups_IDm2, 2, function(x) abs(B_m2 + x))
+      
+      # Using absolute slope and the individual deviations for each individuals intercept calculate the correlation across the 248 fish for each posterior sample of individual blups
+        cor_ID1_m0_ID1_slope <- cor_calc(slopes = abs_slope, intercepts = blups_IDm0)
+    
+         mean(cor_ID1_m0_ID1_slope)
+         mean(stanproc_personality_plasticity_dhglm_aggression$personality_plasticity_association1)
+
+# PERSONALITY-PREDICTABILITY ASSOCIATIONS
+# Equation 22: sign-reversed correlation between mean and dispersion intercepts
+brms_personality_predictability_association <- -1*brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "cor_id__Intercept__sigma_Intercept", fixed = TRUE)[,1]
+mean(brms_personality_predictability_association)
+mean(stanproc_personality_plasticity_dhglm_aggression$personality_predictability_association1)
+
+#PLASTICITY-PREDICTABILITY ASSOCIATIONS
+    #Equation 23: correlation between intercepts pulled from the model
+brms_cor_ID1_m2_ID1_v0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "cor_id__age.Z__sigma_Intercept", fixed = TRUE)[,1]
+# note that a positive correlation indicates *less* predictability, because a greater V0 = more variance
+mean(brms_cor_ID1_m2_ID1_v0)
+mean(stanproc_personality_plasticity_dhglm_aggression$cor_ID1_m2_ID1_v0)
+
+# Equation 24: slope magnitudes and sign-reversed predictability differences
+blups_IDv0_reversed <- -1*brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "r_id__sigma[[1-9].*,Intercept]")
+brms_plasticity_predictability_association <-  cor_calc(abs_slope, blups_IDv0_reversed)
+mean(brms_plasticity_predictability_association)
+mean(stanproc_personality_plasticity_dhglm_aggression$plasticity_predictability_association1)
+```
 
 ## Bi-variate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
@@ -787,4 +831,119 @@ In this section we briefly show readers how they can fit a bi-variate model with
 	}
 
 summary(brms_bivar_dhglm_activity_aggression)
+```
+
+
+### Associations between Personality, Plasticity, and Predictability {.tabset .tabset-fade .tabset-pills}
+
+```{r pers_plas_pred, include=TRUE, results = "hide", message=FALSE, warning=FALSE, class.source='klippy'}
+(brms_bivar_dhglm_activity_aggression$fit@sim$samples[[1]] %>% names())[1:40] # names of parameters
+
+# PERSONALITY-PLASTICITY ASSOCIATIONS
+# Equation 8: correlation between intercept and slope deviations
+brms_cor_ID1_m0_ID1_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_Intercept__activity_age.Z", fixed = TRUE)[,1]
+brms_cor_ID2_m0_ID2_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_Intercept__aggression_age.Z", fixed = TRUE)[,1]
+
+mean(brms_cor_ID1_m0_ID1_m2)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_m0_ID1_m2)
+
+mean(brms_cor_ID2_m0_ID2_m2)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID2_m0_ID2_m2)
+
+# Equation 9: correlation between intercept differences and slope magnitudes   
+      # Extract blups
+       blups_ID1_m0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__activity[[1-9].*,Intercept]")
+       blups_ID1_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__activity[[1-9].*,age.Z]")
+       B1_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "b_activity_age.Z", fixed = TRUE)[,1]
+       
+       blups_ID2_m0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__aggression[[1-9].*,Intercept]")
+       blups_ID2_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__aggression[[1-9].*,age.Z]")
+       B2_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "b_aggression_age.Z", fixed = TRUE)[,1]
+      
+      # Calculate the absolute magnitude of individuals slope and each individuals slope deviation (Eqn. 9 of main manuscript)
+        abs_slope1 <- apply(blups_ID1_m2, 2, function(x) abs(B1_m2 + x))
+        abs_slope2 <- apply(blups_ID2_m2, 2, function(x) abs(B2_m2 + x))
+      
+      # Using absolute slope and the individual deviations for each individuals intercept calculate the correlation across the 248 fish for each posterior sample of individual blups
+        cor_ID1_m0_ID1_slope <- cor_calc(slopes = abs_slope1, intercepts = blups_ID1_m0)
+        cor_ID2_m0_ID2_slope <- cor_calc(slopes = abs_slope2, intercepts = blups_ID2_m0)
+    
+         mean(cor_ID1_m0_ID1_slope)
+         mean(stanproc_bivar_dhglm_activity_aggression$personality_plasticity_association1)
+         
+         mean(cor_ID2_m0_ID2_slope)
+         mean(stanproc_bivar_dhglm_activity_aggression$personality_plasticity_association2)
+
+# PERSONALITY-PREDICTABILITY ASSOCIATIONS
+# Equation 22: sign-reversed correlation between mean and dispersion intercepts
+brms_personality_predictability_association1 <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_Intercept__sigma_activity_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
+brms_personality_predictability_association2 <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_Intercept__sigma_aggression_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
+
+mean(brms_personality_predictability_association1)
+mean(stanproc_bivar_dhglm_activity_aggression$personality_predictability_association1)
+
+mean(brms_personality_predictability_association2)
+mean(stanproc_bivar_dhglm_activity_aggression$personality_predictability_association2)
+
+
+#PLASTICITY-PREDICTABILITY ASSOCIATIONS
+    #Equation 23: correlation between intercepts pulled from the model
+brms_cor_ID1_m2_ID1_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_age.Z__sigma_activity_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
+brms_cor_ID2_m2_ID2_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_age.Z__sigma_aggression_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
+# note that a positive correlation indicates *less* predictability, because a greater V0 = more variance
+mean(brms_cor_ID1_m2_ID1_v0)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_m2_ID1_v0)
+
+mean(brms_cor_ID2_m2_ID2_v0)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID2_m2_ID2_v0)
+
+# Equation 24: slope magnitudes and sign-reversed predictability differences
+blups_ID1_v0_reversed <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__sigma_activity[[1-9].*,Intercept]")
+brms_plasticity_predictability_association1 <-  cor_calc(abs_slope1, blups_ID1_v0_reversed)
+mean(brms_plasticity_predictability_association1)
+mean(stanproc_bivar_dhglm_activity_aggression$plasticity_predictability_association1)
+
+blups_ID2_v0_reversed <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__sigma_aggression[[1-9].*,Intercept]")
+brms_plasticity_predictability_association2 <-  cor_calc(abs_slope2, blups_ID2_v0_reversed)
+mean(brms_plasticity_predictability_association2)
+mean(stanproc_bivar_dhglm_activity_aggression$plasticity_predictability_association2)
+```
+
+### Personality, Plasticity, and Predictability Syndromes {.tabset .tabset-fade .tabset-pills}
+
+Between-trait correlations in individual differences in mean intercepts, slopes, and dispersion intercepts  
+
+```{r sydromes, include=TRUE, results = "hide", message=FALSE, warning=FALSE, class.source='klippy'}
+# Equation 14: Behavioural Syndromes
+brms_cor_ID1_m0_ID2_m0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_Intercept__activity_Intercept", fixed = TRUE)[,1]
+mean(brms_cor_ID1_m0_ID2_m0)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_m0_ID2_m0)
+
+# Equation 15: Plasticity syndromes, slope differences
+brms_cor_ID1_m2_ID2_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_age.Z__activity_age.Z", fixed = TRUE)[,1]
+mean(brms_cor_ID1_m2_ID2_m2)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_m2_ID2_m2)
+
+# Equation 16: Plasticity syndromes, slope magnitudes
+      # Extract blups
+       blups_ID1_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__aggression[[1-9].*,age.Z]")
+       blups_ID2_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "r_id__activity[[1-9].*,age.Z]")
+       #population slopes
+       B1_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "b_aggression_age.Z", fixed = TRUE)[,1]
+       B2_m2 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "b_activity_age.Z", fixed = TRUE)[,1]
+      
+      # Calculate the absolute magnitude of individuals slope and each individuals slope deviation (Eqn. 9 of main manuscript)
+        abs_slope1 <- apply(blups_ID1_m2, 2, function(x) abs(B1_m2 + x))
+        abs_slope2 <- apply(blups_ID2_m2, 2, function(x) abs(B2_m2 + x))
+      
+      # Using absolute slope and the individual deviations for each individuals intercept calculate the correlation across the 248 fish for each posterior sample of individual blups
+        cor_slope_mag <- cor_calc(abs_slope1, intercepts = abs_slope2)
+        
+        mean(cor_slope_mag)
+        mean(stanproc_bivar_dhglm_activity_aggression$plasticity_syndrome)
+        
+# Equation 31: Predictability syndrome
+brms_cor_ID1_v0_ID2_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__sigma_aggression_Intercept__sigma_activity_Intercept", fixed = TRUE)[,1]
+mean(brms_cor_ID1_v0_ID2_v0)
+mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_v0_ID2_v0)
 ```
