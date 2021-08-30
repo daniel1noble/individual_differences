@@ -26,13 +26,18 @@ klippy::klippy(tooltip_message = 'Click to Copy Code', tooltip_success = 'Done',
 
 # Introduction
 
-This supplement introduces readers to the calculations and modeling approaches, reviewed by:\
-Rose E. O'Dea, Daniel W.A. Noble and Shinichi Nakagawa 2021. Unifying individual differences in personality, predictability, and plasticity: a practical guide. *Methods in Ecology and Evolution*, using the `brms` R package (which interfaces with `stan`).
+This supplement introduces readers to the calculations and modelling approaches, reviewed by:\
+Rose E. O'Dea, Daniel W.A. Noble and Shinichi Nakagawa 2021. *Unifying individual differences in personality, predictability, and plasticity: a practical guide*, using the `brms` R package (which interfaces with `stan`).
 
 We only fit an exemplar set of models from our worked example. More specifically, we focus on a subset of models using two traits (aggression and activity) to demonstrate how to fit single- and double- hierarchical generalized linear models (abbreviated as SHGLM and DHGLM, respectively). This includes uni-variate and bi-variate (two trait) models. For a selection of models we also show how to: 1) calculate repeatability and the coefficient of variation for the mean and dispersion models, and 2) extract and manipulate individual BLUPs (best linear unbiased predictors) to estimate between-individual correlations outlined in our manuscript.
 
-# R Packages, Data and Model Fits
+# Stan models for comparison
+```{r}
 
+```
+
+
+# R Packages, Data and Model Fits
 Readers will need to download the data and model fits (unless they want to rerun the models) from our [Open Science Framework (OSF) Project Site](http://doi.org/10.17605/OSF.IO/V3QAX). Once downloaded and placed in your working directory run the following code to load the data sets and R packages:
 
 ```{r loadpackages, echo = TRUE, results = "hide", messages = FALSE, class.source='klippy'}
@@ -41,7 +46,7 @@ Readers will need to download the data and model fits (unless they want to rerun
 		pacman::p_load(klippy, brms, dplyr, coda, here, flextable)	
 
 		
-# Get the raw. We need this for back transformation from z-scale
+# Get the raw data. We need this for back transformation from z-scale
 		# making sure fish_ID is coded as a factor (done automatically before R v4+)
 		# square-root transforming novel and predator response variables
 		# z-scaling all variables
@@ -57,7 +62,16 @@ Readers will need to download the data and model fits (unless they want to rerun
 		                    predator = scale(sqrt(stim.dist_0_10cm_dur_Predator)), 
 		                      social = scale(stim.dist_0_5cm_dur_Social),
 		                      id = fish_ID)	
-		
+
+# Stan models for comparison
+load("./Results/stanmodels_processed.Rdata")
+stanproc_personality_shglm_aggression <- stanmods[stanmods$model=="personality shglm" & stanmods$behaviour1=="aggression",]
+stanproc_personality_dhglm_aggression <- stanmods[stanmods$model=="personality dhglm" & stanmods$behaviour1=="aggression",]
+stanproc_personality_plasticity_shglm_aggression <- stanmods[stanmods$model=="personality & plasticity shglm" & stanmods$behaviour1=="aggression",]
+stanproc_personality_plasticity_dhglm_aggression <- stanmods[stanmods$model=="personality & plasticity dhglm" & stanmods$behaviour1=="aggression",]
+stan_bivar_shglm_activity_aggression <- stanmods[stanmods$model=="bivariate shglm" & stanmods$behaviour1=="activity" & stanmods$behaviour2=="aggression",]
+stan_bivar_dhglm_activity_aggression <- stanmods[stanmods$model=="bivariate dhglm" & stanmods$behaviour1=="activity" & stanmods$behaviour2=="aggression",]
+	  
 ```
 
 # Load Functions
@@ -179,9 +193,9 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 			brms_personality_shglm_aggression <- brms::brm(formula_personality_shglm_aggression, data = dat, 
 									iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 									save_pars = save_pars())
-			saveRDS(brms_personality_shglm_aggression, "./brms_models/brms_personality_shglm_aggression") 
+			saveRDS(brms_personality_shglm_aggression, "./Models/brms_models/brms_personality_shglm_aggression") 
 		} else {
-			brms_personality_shglm_aggression <- readRDS(here::here("brms_models","brms_personality_shglm_aggression"))
+			brms_personality_shglm_aggression <- readRDS(here::here("Models/brms_models","brms_personality_shglm_aggression"))
 		}
 		
 		summary(brms_personality_shglm_aggression)
@@ -190,49 +204,62 @@ Let's start by fitting a model to the aggression data to estimate "personality".
 ### Calculate CVm and Rpm {.tabset .tabset-fade .tabset-pills}
 
 ```{r pers_rpm_cv, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
-
 # (Step 1):  Get the average intercept from fixed effects.
-Bpm <- func_Bp(    B0 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "Intercept")[,1], 
-		               B1 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1])
+    Bpm <- func_Bp(B0 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "Intercept")[,1], 
+                   B1 = brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1])
+      mean(Bpm)
+      mean(stanproc_personality_shglm_aggression$B1_pm)
 
 # (Step 2): Extract random intercept for ID. Numerator for eqn 34. Note these are standard deviations for between-individual differences in the mean model
 		sigma_m0 <- brms::posterior_samples(brms_personality_shglm_aggression, pars = "sd_id__Intercept")[,1]
+		mean(sigma_m0)
+    mean(stanproc_personality_shglm_aggression$sigma_ID1_m0)
 
 # (Step 3): Extract residual standard deviation
 		 sigma_e <- brms::posterior_samples(brms_personality_shglm_aggression, pars = "sigma")[,1]
+		 mean(sigma_e)
+		 mean(stanproc_personality_shglm_aggression$sigma_e1)
 		
 # (Step 4): Calculate fixed effect variance
-	var_fixed <- func_var_fixed(  B1 =  brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1],
-		                            B2 =  brms::posterior_samples(brms_personality_shglm_aggression, pars = "age.Z")[,1],
-		                            data = dat) 
+	var_fixed <- func_var_fixed(B1 =  brms::posterior_samples(brms_personality_shglm_aggression, pars = "sex")[,1],
+		                          B2 =  brms::posterior_samples(brms_personality_shglm_aggression, pars = "age.Z")[,1],
+		                          data = dat) 
+	mean(var_fixed)
+	mean(stanproc_personality_shglm_aggression$var1_fixed_m)
 
 # (Step 5): Calculate total phenotypic variance
 		total_var <- func_sum_var(vars = data.frame(sigma_m0^2, var_fixed, sigma_e^2))
+		mean(total_var)
+		mean(stanproc_personality_shglm_aggression$var1_p)
 		
 # (Step 6): Convert back from z-scale 
-		
-		   mu_unscaled <- mean(dat$stim.dist_0_5cm_dur_Aggression)
+		mu_unscaled <- mean(dat$stim.dist_0_5cm_dur_Aggression)
 		sigma_unscaled <- sd(dat$stim.dist_0_5cm_dur_Aggression)
 		
-		            Mu <- Bpm*sigma_unscaled + mu_unscaled
+		         Mu <- Bpm*sigma_unscaled + mu_unscaled
 	         	 Sigma <- sqrt(total_var)*sigma_unscaled
 		
     indiv_sd <- sqrt(sigma_m0^2)*sigma_unscaled
 
 # (Step 7): Calculate CVm 
 		CV_m <- indiv_sd/Mu
+		mean(CV_m)
+		mean(stanproc_personality_shglm_aggression$CV1_mu)
 
 # (Step 8): Calculate Rpm		
 		Rp_m <- sigma_m0^2/total_var
+		mean(Rp_m)
+		mean(stanproc_personality_shglm_aggression$Rp1_mu)
 
 # Results
 			personality_results <- data.frame( CVm = mean(CV_m),
-			                                   CVm.L = coda::HPDinterval(coda::mcmc(CV_m))[1],
-			                                   CVm.U = coda::HPDinterval(coda::mcmc(CV_m))[2],
+			                                   CVm.L = quantile(CV_m, 0.025),
+			                                   CVm.U = quantile(CV_m, 0.975),
 			                                   	Rpm =  mean(Rp_m),
-			                                   Rpm.L = 	coda::HPDinterval(coda::mcmc(Rp_m))[1],
-			                                   Rpm.U = 	coda::HPDinterval(coda::mcmc(Rp_m))[2])
+			                                   Rpm.L = 	quantile(Rp_m, 0.025),
+			                                   Rpm.U = 	quantile(Rp_m, 0.975))
 			flextable::flextable(personality_results)
+		
 		
 		
 ```
@@ -262,9 +289,9 @@ Let's start by fitting a model to the aggression data to estimate both "personal
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
 		
-		saveRDS(brms_personality_dhglm_aggression, "./brms_models/brms_personality_dhglm_aggression")
+		saveRDS(brms_personality_dhglm_aggression, "./Models/brms_models/brms_personality_dhglm_aggression")
 	} else {
-		brms_personality_dhglm_aggression <- readRDS(here::here("brms_models", "brms_personality_dhglm_aggression"))
+		brms_personality_dhglm_aggression <- readRDS(here::here("Models/brms_models", "brms_personality_dhglm_aggression"))
 	}
 
 	summary(brms_personality_dhglm_aggression)
@@ -283,40 +310,84 @@ Here we now have two separate models: a mean model and a dispersion model.
 		 	 B0_m <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_Intercept")[,1]			 
 		 	 B1_m <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sex")[,1]	
 		 	 B2_m <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_age.Z")[,1]	
+		 	 
+		 	 mean(B0_m)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_m0)
+		 	 
+		 	 mean(B1_m)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_m1)
+		 	 
+		 	 mean(B2_m)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_m2)
 	
 	# (Step 2): Extract the population coefficients for dispersion model	 
 		 	 B0_sd_exp <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sigma_Intercept")[,1]			
 		 	 B1_sd_exp <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sigma_sex")[,1]	
 		 	 B2_sd_exp <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "b_sigma_age.Z")[,1]
 		 	 
+		 	 # for comparison between ln(var) and ln(sd) models, need to multiple ln(sd) by 2
+		 	 mean(2*B0_sd_exp)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_v0)
+		 	 
+		 	 mean(2*B1_sd_exp)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_v1)
+		 	 
+		 	 mean(2*B2_sd_exp)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_v2)
+		 	 
 	# (Step 3): Extract the random ID intercept variance components for random intercept. Note that we model ln(sd) so we need to convert to variance scale by multipling by 2.
 		 	  sigma_ID_m0 <- brms::posterior_samples(brms_personality_dhglm_aggression, pars = "sd_id__Intercept")[,1]
-		 	 sigma_ID_sd0 <- brms::posterior_samples(brms_personality_dhglm_aggression, 
+		 	  sigma_ID_sd0 <- brms::posterior_samples(brms_personality_dhglm_aggression, 
 		 	                                         pars = "sd_id__sigma_Intercept")[,1]
 		 	  sigma_ID_v0 <- 2*sigma_ID_sd0
+		 	  
+		 	  mean(sigma_ID_v0)
+		 	  mean(stanproc_personality_dhglm_aggression$sigma_ID1_v0)
 		 	 
+	
 	# (Step 4): Calculate the fixed effect variance for the mean model (var_fixed_m) and the dispersion model (B_pv)
 		 	 B_pm <- func_Bp(B0 = B0_m, B1 = B1_m)
 		 	 B_pv <- 2*func_Bp(B0 = B0_sd_exp, B1 = B1_sd_exp)
 		 	 
-	# (Step 5): Calculate the population intercept for the mean model (var_fixed_m) and dispersion model (var_fixed_v). Note that a variance on the ln(sd) scale can be converted to a ln(var) by multipling by 4. See supplemental text.
+		 	 mean(B_pm)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_pm)
+		 	 
+		 	 mean(B_pv)
+		 	 mean(stanproc_personality_dhglm_aggression$B1_pv)
+		 	 
+  # (Step 5): Calculate the population intercept for the mean model (var_fixed_m) and dispersion model (var_fixed_v). Note that a variance on the ln(sd) scale can be converted to a ln(var) by multipling by 4. See supplemental text.
 		 	 var_fixed_m <- func_var_fixed(B1 = B1_m, B2 = B2_m, data = dat)
 		 	 var_fixed_v <- 4*func_var_fixed(B1 = B1_sd_exp, B2 = B2_sd_exp, data = dat)
+		 	 
+		 	 mean(var_fixed_m)
+		 	 mean(stanproc_personality_dhglm_aggression$var1_fixed_m)
+		 	 
+		 	 mean(var_fixed_v)
+		 	 mean(stanproc_personality_dhglm_aggression$var1_fixed_v)
 
 ###################################
 # Mean Model - Repeatability and CV
 ###################################
 
 	  # (Step 1): Calculate average within-individual / residual variance
-		 	 sigma_w <- func_var_within(        Bpv = B_pv, 
-		 	                               sigma_v0 = sigma_ID_v0, 
+		 	 sigma_w <- func_var_within(Bpv = B_pv, 
+		 	                            sigma_v0 = sigma_ID_v0, 
 		 	                            var_fixed_v = var_fixed_v)
+		 	 
+		 	 mean(sigma_w)
+		 	 mean(stanproc_personality_dhglm_aggression$sigma1_w)
 		 	 
 		# (Step 2): Calculate total phenotypic variance 
 		 	 var_p <- func_sum_var(vars = data.frame(sigma_ID_m0^2, var_fixed_m, sigma_w^2))
 		 	 
+		 	 mean(var_p)
+		 	 mean(stanproc_personality_dhglm_aggression$var1_p)
+		 	 
 		# (Step 3): Calculate repeatability
 		 	 Rp_mu <- sigma_ID_m0^2/var_p
+		 	 
+		 	 mean(Rp_mu)
+		 	 mean(stanproc_personality_dhglm_aggression$Rp1_mu)
 		 	 
 		# (Step 4): Convert back from z-scale to calculate CVm
 		 	       mu_unscaled <- mean(dat$stim.dist_0_5cm_dur_Aggression)
@@ -329,15 +400,21 @@ Here we now have two separate models: a mean model and a dispersion model.
 		# (Step 5): Calculate CVm for mean model
 		 	 CV_mu <- indiv_sd/Mu
 		 	 
+		 	 mean(CV_mu)
+		 	 mean(stanproc_personality_dhglm_aggression$CV1_mu)
+		 	 
 ###################################
 # Dispersion Model - Repeatability and CV
 ###################################
 		 	
 		# (Step 1): Calculate repeatability for the dispersion model
-		 	Rp_var <- func_Rp_var(        Bpv = B_pv, 
-		 	                         sigma_v0 = sigma_ID_v0, 
-		 	                      var_fixed_v = var_fixed_v, 
-		 	                            var_p = var_p)
+		 	 Rp_var <- func_Rp_var(Bpv = B_pv, 
+		 	                       sigma_v0 = sigma_ID_v0, 
+		 	                       var_fixed_v = var_fixed_v, 
+		 	                       var_p = var_p)
+		 	 
+		 	 mean(Rp_var)
+		 	 mean(stanproc_personality_dhglm_aggression$Rp1_var)
 		 	
 		# (Step 2): Sum of IDv0 and fixedV = total variance in residual variance on log-normal scale
 		 	   var_residvar_exp <- func_sum_var(vars = data.frame(sigma_ID_v0^2, var_fixed_v))
@@ -353,6 +430,9 @@ Here we now have two separate models: a mean model and a dispersion model.
 		
 	  # (Step 5): Calculate coefficient of variation 
 		 	   CV_var <- sqrt(var_ID)/sigma_w^2   
+		 	   
+		 	   mean(CV_var)
+		 	   mean(stanproc_personality_dhglm_aggression$CV1_var)
 ```
 
 ```{r personality_pred_results, echo = FALSE, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
@@ -360,10 +440,9 @@ Here we now have two separate models: a mean model and a dispersion model.
 pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", ""),
                                  type = c("Rpm", "CVm", "Rp_var", "CV_var"),
                                 Est. = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
-                                L.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[1], coda::HPDinterval(coda::mcmc(CV_mu))[1], coda::HPDinterval(coda::mcmc(Rp_var))[1],coda::HPDinterval(coda::mcmc(CV_var))[1]), 
-                                       U.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[2], coda::HPDinterval(coda::mcmc(CV_mu))[2], coda::HPDinterval(coda::mcmc(Rp_var))[2],coda::HPDinterval(coda::mcmc(CV_var))[2]))
+                                L.CI= c(quantile(Rp_mu,0.025), quantile(CV_mu,0.025), quantile(Rp_var,0.025),quantile(CV_var,0.025)), 
+                                       U.CI= c(quantile(Rp_mu,0.975), quantile(CV_mu,0.975), quantile(Rp_var,0.975),quantile(CV_var,0.975)))
 flextable::flextable(pers_pred_results)
-
 ```
 
 ## Personality / Plasticity (SHGLM - Random Slope) {.tabset .tabset-fade .tabset-pills}
@@ -389,40 +468,49 @@ Here, using a random regression model, we can estimate a random intercept and sl
 		brms_personality_plasticity_shglm_aggression <- brm(formula_stan_personality_plasticity_shglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
-		saveRDS(brms_personality_plasticity_shglm_aggression, "./brms_models/brms_personality_plasticity_shglm_aggression")
+		saveRDS(brms_personality_plasticity_shglm_aggression, "./Models/brms_models/brms_personality_plasticity_shglm_aggression")
 	} else {
-		brms_personality_plasticity_shglm_aggression <- readRDS(here::here("brms_models", "brms_personality_plasticity_shglm_aggression"))
+		brms_personality_plasticity_shglm_aggression <- readRDS(here::here("Models/brms_models", "brms_personality_plasticity_shglm_aggression"))
 	}
 
 	summary(brms_personality_plasticity_shglm_aggression)
 ```
 
-### Personality-Plasticity Association {.tabset .tabset-fade .tabset-pills}
+### Personality-Plasticity Associations {.tabset .tabset-fade .tabset-pills}
 
-Here, using the model we can calculate the personality-plasticity association (i.e., the correlation between individual intercepts and *absolute* slopes).
+Here, using the model we can calculate the personality-plasticity association (i.e., the correlation between individual intercepts and either slope differences, or slope magnitudes).
 
 ```{r pers_plas, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
-     
+# Equation 8: correlation between intercept and slope deviations
+
+cor_slope_dif <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "cor_id__Intercept__age.Z", fixed = TRUE)[,1]
+
+mean(cor_slope_dif)
+mean(stanproc_personality_plasticity_shglm_aggression$cor_ID1_m0_ID1_m2)
+
+# Correlation between intercept differences and slope magnitudes: Equation 9     
       # Extract blups
        blups_IDm0 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,Intercept]")
-      blups_IDm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,age.Z]")
-             Bm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "b_age.Z", fixed = TRUE)
-  
+       blups_IDm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "r_id[[1-9].*,age.Z]")
+       Bm2 <- brms::posterior_samples(brms_personality_plasticity_shglm_aggression, pars = "b_age.Z", fixed = TRUE)[,1]
+      
       # Calculate the absolute magnitude of individuals slope and each individuals slope deviation (Eqn. 9 of main manuscript)
-        abs_slope <- apply(blups_IDm2, 2, function(x) abs(Bm2[,1] + x))
+        abs_slope <- apply(blups_IDm2, 2, function(x) abs(Bm2 + x))
       
       # Using absolute slope and the individual deviations for each individuals intercept calculate the correlation across the 248 fish for each posterior sample of individual blups
-        cors <- cor_calc(slopes = abs_slope, intercepts = blups_IDm0)
+        cor_slope_mag <- cor_calc(slopes = abs_slope, intercepts = blups_IDm0)
        
       # Check that we have 12,000 samples from posterior
-        length(cors)
+        length(cor_slope_mag)
       
       # Look at distribution of correlation coefficients
-        hist(cors)
+        hist(cor_slope_mag)
       
       # Estimate the mean and 95% CI  
-         mean(cors)
-         coda::HPDinterval(coda::mcmc(cors))
+         mean(cor_slope_mag)
+         quantile(cor_slope_mag, c(0.025, 0.975))
+         mean(stanproc_personality_plasticity_shglm_aggression$personality_plasticity_association1)
+         quantile(stanproc_personality_plasticity_shglm_aggression$personality_plasticity_association1, c(0.025, 0.975))
             
 ```
 
@@ -449,9 +537,9 @@ In this section we are modeling a random slope and intercept for both the mean a
 		brms_personality_plasticity_dhglm_aggression <- brm(formula_personality_plasticity_dhglm_aggression, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
-		saveRDS(brms_personality_plasticity_dhglm_aggression, "./brms_models/brms_personality_plasticity_dhglm_aggression")
+		saveRDS(brms_personality_plasticity_dhglm_aggression, "./Models/brms_models/brms_personality_plasticity_dhglm_aggression")
 	} else {
-		brms_personality_plasticity_dhglm_aggression <- readRDS(here::here("brms_models", "brms_personality_plasticity_dhglm_aggression"))
+		brms_personality_plasticity_dhglm_aggression <- readRDS(here::here("Models/brms_models", "brms_personality_plasticity_dhglm_aggression"))
 	}
 
 	summary(brms_personality_plasticity_dhglm_aggression)
@@ -470,46 +558,98 @@ Random regression for both the mean and dispersion model requires some modificat
 		 	 B0_m <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_Intercept")[,1]			 
 		 	 B1_m <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sex")[,1]	
 		 	 B2_m <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_age.Z")[,1]	
+		 	 
+		 	 mean(B0_m)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_m0)
+		 	 
+		 	 mean(B1_m)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_m1)
+		 	 
+		 	 mean(B2_m)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_m2)
 	
 	# (Step 2): Extract the population coefficients for dispersion model	 
 		 	 B0_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_Intercept")[,1]			
 		 	 B1_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_sex")[,1]	
 		 	 B2_sd_exp <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "b_sigma_age.Z")[,1]
 		 	 
+		 	 mean(2*B0_sd_exp)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_v0) #@ROSE: DIFFERENT, probably because the stan model doesn't include a random slope
+		 	 
+		 	 mean(2*B1_sd_exp)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_v1)
+		 	 
+		 	 mean(2*B2_sd_exp)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_v2)
+		 	 
 	# (Step 3): Extract the random ID intercept variance components for random intercept. Note that we model ln(sd) so we need to convert to variance scale by multipling by 2.
 		 	  sigma_ID_m0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__Intercept")[,1]
-		 	 sigma_ID_sd0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, 
+		 	  
+		 	  mean(sigma_ID_m0)
+		 	  mean(stanproc_personality_plasticity_dhglm_aggression$sigma_ID1_m0)
+		 	  
+		 	  sigma_ID_sd0 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, 
 		 	                                         pars = "sd_id__sigma_Intercept")[,1]
 		 	  sigma_ID_v0 <- 2*sigma_ID_sd0
+		 	  
+		 	  mean(sigma_ID_v0)
+		 	  mean(stanproc_personality_plasticity_dhglm_aggression$sigma_ID1_v0)
 	
 	# (Step 4): **New step as we now have a sd for the random slopes.**
 	     sigma_ID_m2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__age.Z")[,1]
-	    sigma_ID_sd2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__sigma_age.Z")[,1]
+	     
+	     mean(sigma_ID_m2)
+	     mean(stanproc_personality_plasticity_dhglm_aggression$sigma_ID1_m2)
+	     
+	     #@ROSE: we don't want the random slope, the dataset is not good enough for it
+	     sigma_ID_sd2 <- brms::posterior_samples(brms_personality_plasticity_dhglm_aggression, pars = "sd_id__sigma_age.Z")[,1]
 	     sigma_ID_v2 <- 2*sigma_ID_sd2
+	     
 		 	  
 	# (Step 5): Calculate the fixed effect variance for the mean model (var_fixed_m) and the dispersion model (B_pv). Note here that the calculations are the same because we assume intercept at an average age.
 		 	 B_pm <- func_Bp(B0 = B0_m, B1 = B1_m)
 		 	 B_pv <- 2*func_Bp(B0 = B0_sd_exp, B1 = B1_sd_exp)
 		 	 
+		   mean(B_pm)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_pm)
+		 	 
+		 	 mean(B_pv)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$B1_pv)
+		 	 
 	# (Step 6): Calculate the population intercept for the mean model (var_fixed_m) and dispersion model (var_fixed_v). Note that a variance on the ln(sd) scale can be converted to a ln(var) by multipling by 4. See supplemental text.
 		 	 var_fixed_m <- func_var_fixed(B1 = B1_m, B2 = B2_m, data = dat)
 		 	 var_fixed_v <- 4*func_var_fixed(B1 = B1_sd_exp, B2 = B2_sd_exp, data = dat)
+		 	 
+		 	 mean(var_fixed_m)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$var1_fixed_m)
+		 	 
+		 	 mean(var_fixed_v)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$var1_fixed_v)
 
 ###################################
 # Mean Model - Repeatability and CV
 ###################################
 
 	  # (Step 1): ** Calculate average within-individual / residual variance **
-		 	 sigma_w <- func_var_within_slope(        Bpv = B_pv, 
-		 	                               sigma_v0 = sigma_ID_v0, 
-		 	                            var_fixed_v = var_fixed_v,
-		 	                            sigma_ID_v2 = sigma_ID_v2)
+		 	 sigma_w <- func_var_within_slope(Bpv = B_pv, 
+		 	                                  sigma_v0 = sigma_ID_v0, 
+		 	                                  var_fixed_v = var_fixed_v,
+		 	                                  sigma_ID_v2 = sigma_ID_v2)
+		 	 
+		 	 mean(sigma_w)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$sigma1_w) #@ROSE: different, because this model doesn't have a random slope
 		 	 
 		# (Step 2): Calculate total phenotypic variance. Note here that we add in the random slope variance now
 		 	 var_p <- func_sum_var(vars = data.frame(sigma_ID_m0^2, sigma_ID_m2^2, var_fixed_m, sigma_w^2))
 		 	 
+		 	 mean(var_p)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$var1_p) #@ROSE: different
+		 	 
 		# (Step 3): Calculate repeatability
 		 	 Rp_mu <- sigma_ID_m0^2/var_p
+		 	 
+		 	 mean(Rp_mu)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$Rp1_mu)
 		 	 
 		# (Step 4): Convert back from z-scale to calculate CVm
 		 	       mu_unscaled <- mean(dat$stim.dist_0_5cm_dur_Aggression)
@@ -522,19 +662,24 @@ Random regression for both the mean and dispersion model requires some modificat
 		# (Step 5): Calculate CVm for mean model
 		 	 CV_mu <- indiv_sd/Mu
 		 	 
+		 	 mean(CV_mu)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$CV1_mu)
+		 	 
 ###################################
 # Dispersion Model - Repeatability and CV
 ###################################
 		 	
 		# (Step 1): Calculate repeatability for the dispersion model
-		 	Rp_var <- func_Rp_var(        Bpv = B_pv, 
-		 	                         sigma_v0 = sigma_ID_v0, 
-		 	                      var_fixed_v = var_fixed_v, 
-		 	                            var_p = var_p)
+		 	 Rp_var <- func_Rp_var(Bpv = B_pv, 
+		 	                       sigma_v0 = sigma_ID_v0, 
+		 	                       var_fixed_v = var_fixed_v, 
+		 	                       var_p = var_p)
+		 	 
+		 	 mean(Rp_var)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$Rp1_var)
 		 	
-		# (Step 2): ** Sum of IDv0 (intercept), IDv2 (slope) and fixedV = total variance in residual variance on log-normal scale. See eqn 39. in MS.**
-		 	   var_residvar_exp <- func_sum_var(vars = data.frame(sigma_ID_v0^2, var_fixed_v, sigma_ID_v2))
-		 
+		# (Step 2): ** Sum of IDv0 (intercept), IDv2 (slope) and fixedV = total variance in residual variance on log-normal scale. See eqn 39. in MS.** 
+		 	   var_residvar_exp <- func_sum_var(vars = data.frame(sigma_ID_v0^2, var_fixed_v, sigma_ID_v2)) #@ROSE: need to change this to not include random slope
 		 	   
     # (Step 3): Converting back to same scale as mean model  
 		 	   sigma_residvar <- func_ln_convert(mu_ln = B_pv, 
@@ -546,6 +691,10 @@ Random regression for both the mean and dispersion model requires some modificat
 		
 	  # (Step 5): Calculate coefficient of variation 
 		 	   CV_var <- sqrt(var_ID)/sigma_w^2   
+		 	   
+		 	 mean(CV_var)
+		 	 mean(stanproc_personality_plasticity_dhglm_aggression$CV1_var)
+
 ```
 
 ```{r personality_slope_results, echo = FALSE, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
@@ -553,10 +702,9 @@ Random regression for both the mean and dispersion model requires some modificat
 pers_pred_results <- data.frame(model = c("Mean Model", "", "Dispersion Model", ""),
                                  type = c("Rpm", "CVm", "Rp_var", "CV_var"),
                                 Est. = c(mean(Rp_mu), mean(CV_mu), mean(Rp_var), mean(CV_var)),
-                                L.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[1], coda::HPDinterval(coda::mcmc(CV_mu))[1], coda::HPDinterval(coda::mcmc(Rp_var))[1],coda::HPDinterval(coda::mcmc(CV_var))[1]), 
-                                       U.CI= c(coda::HPDinterval(coda::mcmc(Rp_mu))[2], coda::HPDinterval(coda::mcmc(CV_mu))[2], coda::HPDinterval(coda::mcmc(Rp_var))[2],coda::HPDinterval(coda::mcmc(CV_var))[2]))
+                                L.CI= c(quantile(Rp_mu,0.025), quantile(CV_mu,0.025), quantile(Rp_var,0.025),quantile(CV_var,0.025)), 
+                                       U.CI= c(quantile(Rp_mu,0.975), quantile(CV_mu,0.975), quantile(Rp_var,0.975),quantile(CV_var,0.975)))
 flextable::flextable(pers_pred_results)
-
 ```
 
 ## Bi-variate Personality (SHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
@@ -585,9 +733,9 @@ rerun5 = FALSE
 		brms_bivar_shglm_activity_aggression <- brm(formula_bivar_shglm_aggression + formula_bivar_shglm_activity, data = dat, 
 								iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 								save_pars = save_pars()) 
-		saveRDS(brms_bivar_shglm_activity_aggression, "./brms_models/brms_bivar_shglm_activity_aggression")
+		saveRDS(brms_bivar_shglm_activity_aggression, "./Models/brms_models/brms_bivar_shglm_activity_aggression")
 	} else {
-		brms_bivar_shglm_activity_aggression <- readRDS(here::here("brms_models", "brms_bivar_shglm_activity_aggression"))
+		brms_bivar_shglm_activity_aggression <- readRDS(here::here("Models/brms_models", "brms_bivar_shglm_activity_aggression"))
 	}
 
 	summary(brms_bivar_shglm_activity_aggression)
@@ -620,10 +768,10 @@ In this section we briefly show readers how they can fit a bi-variate model with
 	brms_bivar_dhglm_activity_aggression <- brm(formula_bivar_dhglm_aggression + formula_bivar_dhglm_activity, data = dat, 
 							iter = 6000, warmup = 2000, chains = 3, cores = 3, 
 							save_pars = save_pars()) 
-	saveRDS(brms_bivar_dhglm_activity_aggression, "./brms_models/brms_bivar_dhglm_activity_aggression")
+	saveRDS(brms_bivar_dhglm_activity_aggression, "./Models/brms_models/brms_bivar_dhglm_activity_aggression")
 
 	} else {
-		brms_bivar_dhglm_activity_aggression <- readRDS(here::here("brms_models", "brms_bivar_dhglm_activity_aggression"))
+		brms_bivar_dhglm_activity_aggression <- readRDS(here::here("Models/brms_models", "brms_bivar_dhglm_activity_aggression"))
 	}
 
 summary(brms_bivar_dhglm_activity_aggression)
