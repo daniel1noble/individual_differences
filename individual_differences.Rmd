@@ -876,8 +876,8 @@ mean(stanproc_bivar_dhglm_activity_aggression$cor_ID2_m0_ID2_m2)
 
 # PERSONALITY-PREDICTABILITY ASSOCIATIONS
 # Equation 22: sign-reversed correlation between mean and dispersion intercepts
-brms_personality_predictability_association1 <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_Intercept__sigma_activity_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
-brms_personality_predictability_association2 <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_Intercept__sigma_aggression_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
+brms_personality_predictability_association1 <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_Intercept__sigma_activity_Intercept", fixed = TRUE)[,1] 
+brms_personality_predictability_association2 <- -1*brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_Intercept__sigma_aggression_Intercept", fixed = TRUE)[,1]
 
 mean(brms_personality_predictability_association1)
 mean(stanproc_bivar_dhglm_activity_aggression$personality_predictability_association1)
@@ -888,8 +888,8 @@ mean(stanproc_bivar_dhglm_activity_aggression$personality_predictability_associa
 
 #PLASTICITY-PREDICTABILITY ASSOCIATIONS
     #Equation 23: correlation between intercepts pulled from the model
-brms_cor_ID1_m2_ID1_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_age.Z__sigma_activity_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
-brms_cor_ID2_m2_ID2_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_age.Z__sigma_aggression_Intercept", fixed = TRUE)[,1] # parameter doesn't exist! Model formula must be wrong.
+brms_cor_ID1_m2_ID1_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__activity_age.Z__sigma_activity_Intercept", fixed = TRUE)[,1] 
+brms_cor_ID2_m2_ID2_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__aggression_age.Z__sigma_aggression_Intercept", fixed = TRUE)[,1]
 # note that a positive correlation indicates *less* predictability, because a greater V0 = more variance
 mean(brms_cor_ID1_m2_ID1_v0)
 mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_m2_ID1_v0)
