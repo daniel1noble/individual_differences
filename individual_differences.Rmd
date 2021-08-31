@@ -37,7 +37,7 @@ Readers will need to download the data and model fits (unless they want to rerun
 ```{r loadpackages, echo = TRUE, results = "hide", messages = FALSE, class.source='klippy'}
 # install.packages("pacman")
 # Load Libraries and relevant data
-		pacman::p_load(klippy, brms, dplyr, here, flextable)	
+		pacman::p_load(klippy, brms, dplyr, here, flextable, pander)	
 
 		
 # Get the raw data. We need this for back transformation from z-scale
@@ -946,4 +946,9 @@ mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_m2_ID2_m2)
 brms_cor_ID1_v0_ID2_v0 <- brms::posterior_samples(brms_bivar_dhglm_activity_aggression, pars = "cor_id__sigma_aggression_Intercept__sigma_activity_Intercept", fixed = TRUE)[,1]
 mean(brms_cor_ID1_v0_ID2_v0)
 mean(stanproc_bivar_dhglm_activity_aggression$cor_ID1_v0_ID2_v0)
+```
+
+# Session Information
+```{r, echo = FALSE}
+sessionInfo() %>%  pander(locale = FALSE)
 ```
