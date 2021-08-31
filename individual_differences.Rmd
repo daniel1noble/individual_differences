@@ -837,7 +837,7 @@ summary(brms_bivar_dhglm_activity_aggression)
 ### Associations between Personality, Plasticity, and Predictability {.tabset .tabset-fade .tabset-pills}
 
 ```{r bivar pers_plas_pred, include=TRUE, results = "hide", message=FALSE, warning=FALSE, class.source='klippy'}
-(brms_bivar_dhglm_activity_aggression$fit@sim$samples[[1]] %>% names())[1:40] # names of parameters
+#(brms_bivar_dhglm_activity_aggression$fit@sim$samples[[1]] %>% names())[1:40] # names of parameters
 
 # PERSONALITY-PLASTICITY ASSOCIATIONS
 # Equation 8: correlation between intercept and slope deviations
