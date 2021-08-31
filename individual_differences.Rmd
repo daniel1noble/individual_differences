@@ -256,7 +256,7 @@ We demonstrate the calculation of the coefficient of variation ($CV_m$) and repe
 			align(align = "center", part = "header") %>%  fit_to_width(max_width = 7)
 		
 ```
-## Personality / Predictability (DHGLM) {#personality-predictability-dhglm .tabset .tabset-fade .tabset-pills}
+## Personality & Predictability (DHGLM) {#personality-predictability-dhglm .tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
 
 Let's start by fitting a model to the aggression data to estimate both "personality" (mean model) and "predictability" (dispersion model).
@@ -798,10 +798,10 @@ rerun5 = FALSE
 ```
 
 
-## Bi-variate Personality / Plasticity / Predictability (DHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
+## Bi-variate Personality & Plasticity & Predictability (DHGLM - Two Traits) {.tabset .tabset-fade .tabset-pills}
 ### Model {.tabset .tabset-fade .tabset-pills}
 
-In this section we briefly show readers how they can fit a bi-variate model with aggression and activity, estimating intercepts, slopes and correlations within and among the traits. The principles for calculating repeatability and the coefficient of variation are the same as that outlined in [Personality / Predictability (DHGLM)](#personality-predictability-dhglm).
+In this section we briefly show readers how they can fit a bi-variate model with aggression and activity, estimating intercepts, slopes and correlations within and among the traits. The principles for calculating repeatability and the coefficient of variation are the same as that outlined in [Personality & Predictability (DHGLM)](#personality-predictability-dhglm).
 
 ```{r, include=TRUE, message=FALSE, warning=FALSE, class.source='klippy'}
 ######## Bi-variate Personality/Predictability/Plasticity ######################################
