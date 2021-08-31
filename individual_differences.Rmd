@@ -815,10 +815,10 @@ In this section we briefly show readers how they can fit a bi-variate model with
 	if(rerun6){
 		# Note that the random effect notation: (1 | q |...) is needed to define whether you want to estimate correlations. Random effects with the same letter (i.e., "q") will indicate that one wished to model the correlation between Y1 and Y2 id, or say between sigma Y1 and Y2 etc. If you change letters so that are different it will not model the correlation. It is also one way to reduce how many parameters are estimated. 
 
-		formula_bivar_dhglm_aggression <- bf(   aggression ~ sex + age.Z + (1 + age.Z | p | id),
+		formula_bivar_dhglm_aggression <- bf(   aggression ~ sex + age.Z + (1 + age.Z | z | id),
 						                  sigma ~ sex + age.Z + (1 | z | id))
 
-		formula_bivar_dhglm_activity <- bf(   activity ~ sex + age.Z + (1 + age.Z | p | id),
+		formula_bivar_dhglm_activity <- bf(   activity ~ sex + age.Z + (1 + age.Z | z | id),
 						                sigma ~ sex + age.Z + (1 | z | id))
 
 	brms_bivar_dhglm_activity_aggression <- brm(formula_bivar_dhglm_aggression + formula_bivar_dhglm_activity, data = dat, 
